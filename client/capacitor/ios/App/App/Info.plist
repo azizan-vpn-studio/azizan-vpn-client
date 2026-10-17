@@ -6,7 +6,6 @@
 	<string>$(CAPACITOR_DEBUG)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
-	<key>CFBundleDisplayName</key>
 <key>CFBundleDisplayName</key>
 <string>Azizan VPN</string>
 	<key>CFBundleExecutable</key>
