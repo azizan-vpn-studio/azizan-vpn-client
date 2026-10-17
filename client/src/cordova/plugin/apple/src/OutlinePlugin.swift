@@ -48,7 +48,7 @@ class OutlinePlugin: CDVPlugin {
   #else
     private static let kPlatform = "iOS"
   #endif
-  private static let kAppGroup = "group.org.getoutline.client"
+  private static let kAppGroup = "group.com.azizanvpnstudio.azizanvpn"
 
   override func pluginInitialize() {
     #if DEBUG
