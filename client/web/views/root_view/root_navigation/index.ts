@@ -202,7 +202,7 @@ export class RootNavigation extends LitElement {
         })}
       >
         <header>
-          <img src="${navigationLogo}" alt="Outline navigation logo" />
+       <img src="${navigationLogo}" alt="Azizan VPN navigation logo" />
         </header>
         <md-list>
           <!-- 
