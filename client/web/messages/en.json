@@ -3,7 +3,7 @@
   "about-page-title": "About",
   "accept": "Accept",
   "add-access-key-dialog-error-text": "Invalid access key.",
-  "add-access-key-dialog-header": "Add VPN access key",
+  "add-access-key-dialog-header": "add-access-key-dialog-header": "Add an access key to Azizan VPN",,
   "add-access-key-dialog-help-text": "Need a new access key? Create one at {openLink}our website{closeLink}.",
   "add-access-key-dialog-label": "Paste access key here",
   "appearance-dark": "Dark",
