@@ -16,7 +16,7 @@ import {LitElement, html, css, nothing} from 'lit';
 import {customElement, property} from 'lit/decorators.js';
 import {classMap} from 'lit/directives/class-map.js';
 
-import navigationLogo from '../../../assets/logo-nav.png';
+import navigationLogo from '../../../assets/Icon-83.5@2x.png';
 
 @customElement('root-navigation')
 export class RootNavigation extends LitElement {
