@@ -851,7 +851,7 @@ export class AppRoot extends mixinBehaviors(
     return page === 'servers';
   }
 
- _getLanguagesAvailableValues(languagesAvailable) {
+_getLanguagesAvailableValues(languagesAvailable) {
     return [languagesAvailable.fa, languagesAvailable.en];
   }
 
