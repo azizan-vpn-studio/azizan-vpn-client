@@ -419,7 +419,7 @@ export class AppRoot extends mixinBehaviors(
       DEFAULT_LANGUAGE: {
         type: String,
         readonly: true,
-        value: 'en',
+        value: 'fa',
       },
       LANGUAGES_AVAILABLE: {
         type: Object,
@@ -757,7 +757,7 @@ export class AppRoot extends mixinBehaviors(
   }
 
   _computeLanguage(availableLanguages, defaultLanguage) {
-    const preferredLanguages = i18n.getBrowserLanguages();
+   const preferredLanguages = [new i18n.LanguageCode(defaultLanguage)];
     const overrideLanguage =
       globalThis.localStorage.getItem('overrideLanguage');
     if (overrideLanguage) {
@@ -851,10 +851,8 @@ export class AppRoot extends mixinBehaviors(
     return page === 'servers';
   }
 
-  _getLanguagesAvailableValues(languagesAvailable) {
-    return Object.values(languagesAvailable).sort((a, b) => {
-      return a.name > b.name ? 1 : -1;
-    });
+ _getLanguagesAvailableValues(languagesAvailable) {
+    return [languagesAvailable.fa, languagesAvailable.en];
   }
 
   _computeUseAltAccessMessage(language) {
