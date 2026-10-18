@@ -757,7 +757,7 @@ export class AppRoot extends mixinBehaviors(
   }
 
   _computeLanguage(availableLanguages, defaultLanguage) {
-   const preferredLanguages = [new i18n.LanguageCode(defaultLanguage)];
+    const preferredLanguages = [new i18n.LanguageCode(defaultLanguage)];
     const overrideLanguage =
       globalThis.localStorage.getItem('overrideLanguage');
     if (overrideLanguage) {
@@ -851,7 +851,7 @@ export class AppRoot extends mixinBehaviors(
     return page === 'servers';
   }
 
-_getLanguagesAvailableValues(languagesAvailable) {
+  _getLanguagesAvailableValues(languagesAvailable) {
     return [languagesAvailable.fa, languagesAvailable.en];
   }
 
