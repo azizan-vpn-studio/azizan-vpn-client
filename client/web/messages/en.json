@@ -117,7 +117,7 @@
   "server-create-your-own-zero-state": "Don’t have a server?<br>Create your own with the {openLink}Outline Manager{closeLink}.",
   "server-create-your-own-zero-state-access": "Don’t have a server?<br>Create your own at {openLink}our website{closeLink} or<br>request an {openLink2}access key{closeLink}.",
   "server-default-name": "Proxy Server",
-  "server-default-name-outline": "Outline Server",
+  "server-default-name-outline": "Azizan VPN Server",
   "server-detected": "Please confirm that you want to add this server.",
   "server-disconnected": "Disconnected from “{serverName}”",
   "server-forget": "Forget",
