@@ -1,6 +1,5 @@
 {
-  "about-outline": "Outline is a product by the Outline Foundation that lets anyone create, run, and share access to their own VPN. Outline is designed to be resistant to blocking. Visit <a href={outlineUrl}>getoutline.org</a> to learn how to get started.<br><br>Outline is open source software powered by <a href={shadowsocksUrl}>Shadowsocks</a>. You can contribute to the code on <a href={gitHubUrl}>GitHub</a> and join the conversation on <a href={redditUrl}>Reddit</a>.",
-  "about-page-title": "About",
+ "about-outline": "Azizan VPN is an application for connecting to a VPN server using an access key.<br><br>Azizan VPN is built on the open-source <a href={outlineUrl}>Outline</a> project and uses <a href={shadowsocksUrl}>Shadowsocks</a> technology. The original project's source code is available on <a href={gitHubUrl}>GitHub</a>. Please see the Licenses section for open-source acknowledgments and license information.","about-page-title": "About Azizan VPN",
   "accept": "Accept",
   "add-access-key-dialog-error-text": "Invalid access key.",
  "add-access-key-dialog-header": "Add an access key to Azizan VPN",
