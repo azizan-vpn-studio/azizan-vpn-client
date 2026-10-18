@@ -338,9 +338,9 @@ jobs:
       - name: Upload Azizan VPN Android APK
         uses: actions/upload-artifact@v4
         with:
-        name: azizan-vpn-android-debug
-        path: client/capacitor/android/app/build/outputs/apk/debug/app-debug.apk
-       if-no-files-found: error
+          name: azizan-vpn-android-debug
+          path: client/capacitor/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
 
 
  
