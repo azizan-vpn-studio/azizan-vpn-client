@@ -1,6 +1,6 @@
 {
 "about-outline": "عزیزان VPN برنامه‌ای برای اتصال به سرور VPN با استفاده از کلید دسترسی است.<br><br>عزیزان VPN بر پایهٔ پروژهٔ متن‌باز <a href={outlineUrl}>Outline</a> ساخته شده است و از فناوری <a href={shadowsocksUrl}>Shadowsocks</a> استفاده می‌کند. کد اصلی پروژه در <a href={gitHubUrl}>GitHub</a> در دسترس است. اطلاعات و مجوزهای نرم‌افزار متن‌باز را می‌توانید در بخش «مجوزها» مشاهده کنید.",
-  "about-page-title": "درباره عزیزان VPN"
+  "about-page-title": "درباره عزیزان VPN",
   "add-access-key-dialog-error-text": "کلید دسترسی نامعتبر است.",
 "add-access-key-dialog-header": "افزودن کلید دسترسی به عزیزان VPN",
   "add-access-key-dialog-help-text": "کلید دسترسی جدیدی نیاز دارید؟ یک کلید دسترسی در {openLink}وب‌سایت ما{closeLink} بسازید.",
