@@ -91,7 +91,7 @@ export class AboutView extends LitElement {
     return html`
       <article>
         <header>
-       <img src="${azizanLogo}" alt="Azizan VPN logo" />
+          <img src="${azizanLogo}" alt="Azizan VPN logo" />
           <h1>Azizan VPN</h1>
           <h2>
             ${this.localize('version', 'appVersion', this.version)}
