@@ -33,7 +33,7 @@ workflows:
         bundle_identifier: com.azizanvpn.ios
       vars:
         DEVELOPMENT_TEAM: W74274K4FM
-scripts:
+    scripts:
   - name: Install npm dependencies
     script: |
       npm ci
