@@ -12,13 +12,12 @@ workflows:
       - name: Install npm dependencies
         script: |
           npm ci
-       - name: Install Go toolchain
+      - name: Install Go toolchain
         script: |
           brew install go@1.25
           echo "export PATH=\"$(brew --prefix go@1.25)/bin:\$PATH\"" >> "$CM_ENV"
           export PATH="$(brew --prefix go@1.25)/bin:$PATH"
           go version
-
       - name: Build Azizan VPN Capacitor iOS (unsigned)
         script: |
           npm run action client/capacitor/build ios
