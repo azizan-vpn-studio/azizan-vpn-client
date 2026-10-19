@@ -1,5 +1,5 @@
 # Azizan VPN - iOS build workflows.
-# Preserve the working unsigned build while adding App Store signing.
+# Preserve the working unsigned build while preparing App Store signing.
 workflows:
   azizan-ios:
     name: Azizan VPN iOS Debug
@@ -21,6 +21,7 @@ workflows:
       - name: Build Azizan VPN Capacitor iOS (unsigned)
         script: |
           npm run action client/capacitor/build ios
+
   azizan-ios-release:
     name: Azizan VPN iOS Release
     max_build_duration: 120
@@ -34,15 +35,16 @@ workflows:
       vars:
         DEVELOPMENT_TEAM: W74274K4FM
     scripts:
-  - name: Install npm dependencies
-    script: |
-      npm ci
-  - name: Install Go toolchain
-    script: |
-      brew install go@1.25
-      echo "export PATH=\"$(brew --prefix go@1.25)/bin:\$PATH\"" >> "$CM_ENV"
-      export PATH="$(brew --prefix go@1.25)/bin:$PATH"
-      go version
-
-
-
+      - name: Install npm dependencies
+        script: |
+          npm ci
+      - name: Install Go toolchain
+        script: |
+          brew install go@1.25
+          echo "export PATH=\"$(brew --prefix go@1.25)/bin:\$PATH\"" >> "$CM_ENV"
+          export PATH="$(brew --prefix go@1.25)/bin:$PATH"
+          go version
+      - name: Release signing setup pending
+        script: |
+          echo "Release signing and IPA export steps are not configured yet."
+          exit 1
