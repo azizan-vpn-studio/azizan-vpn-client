@@ -1,0 +1,21 @@
+# Azizan VPN - Capacitor iOS unsigned build validation.
+# This is NOT a signed IPA for App Store distribution.
+workflows:
+  azizan-ios:
+    name: Azizan VPN iOS Debug
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      node: 22
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm ci
+      - name: Install Go toolchain
+        script: |
+          brew install go
+          go version
+      - name: Build Azizan VPN Capacitor iOS (unsigned)
+        script: |
+          npm run action client/capacitor/build ios
