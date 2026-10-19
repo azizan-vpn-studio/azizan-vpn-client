@@ -1,5 +1,4 @@
-# Azizan VPN - Capacitor iOS unsigned build validation.
-# This is NOT a signed IPA for App Store distribution.
+# Azizan VPN - iOS build workflows.Preserve the working unsigned build while adding App Store signing.n.
 workflows:
   azizan-ios:
     name: Azizan VPN iOS Debug
