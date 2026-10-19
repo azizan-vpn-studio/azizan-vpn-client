@@ -507,7 +507,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpnstudio.azizanvpn.VpnExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpn.ios.VpnExtension;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.azizanvpnstudio.azizanvpn.macos.VpnExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -544,7 +544,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpnstudio.azizanvpn.VpnExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpn.ios.VpnExtension;
 				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.azizanvpnstudio.azizanvpn.macos.VpnExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
