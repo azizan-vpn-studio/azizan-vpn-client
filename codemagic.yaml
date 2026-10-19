@@ -1,5 +1,5 @@
 # Azizan VPN - iOS build workflows.
-# Preserve the working unsigned build while adding App Store signing.n.
+# Preserve the working unsigned build while adding App Store signing.
 workflows:
   azizan-ios:
     name: Azizan VPN iOS Debug
