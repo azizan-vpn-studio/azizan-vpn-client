@@ -1,5 +1,5 @@
 # Azizan VPN - iOS build workflows.
-# Preserve the working unsigned build while preparing App Store signing.
+# Keep the proven unsigned build separate from the signed App Store release.
 workflows:
   azizan-ios:
     name: Azizan VPN iOS Debug
@@ -44,7 +44,20 @@ workflows:
           echo "export PATH=\"$(brew --prefix go@1.25)/bin:\$PATH\"" >> "$CM_ENV"
           export PATH="$(brew --prefix go@1.25)/bin:$PATH"
           go version
-      - name: Release signing setup pending
+      - name: Configure app and VPN extension signing
         script: |
-          echo "Release signing and IPA export steps are not configured yet."
-          exit 1
+          xcode-project use-profiles
+      - name: Archive signed iOS release
+        script: |
+          npm run action client/capacitor/build ios release
+      - name: Export App Store IPA
+        script: |
+          mkdir -p "$CM_BUILD_DIR/output/client/ios/ipa"
+          xcodebuild -exportArchive \
+            -archivePath "$CM_BUILD_DIR/output/client/ios/Outline.xcarchive" \
+            -exportPath "$CM_BUILD_DIR/output/client/ios/ipa" \
+            -exportOptionsPlist /Users/builder/export_options.plist
+    artifacts:
+      - output/client/ios/ipa/*.ipa
+      - output/client/ios/Outline.xcarchive
+      - /tmp/xcodebuild_logs/*.log
