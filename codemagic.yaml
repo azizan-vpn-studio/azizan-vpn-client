@@ -21,3 +21,26 @@ workflows:
       - name: Build Azizan VPN Capacitor iOS (unsigned)
         script: |
           npm run action client/capacitor/build ios
+azizan-ios-release:
+    name: Azizan VPN iOS Release
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      xcode: latest
+      node: 22
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.azizanvpn.ios
+      vars:
+        DEVELOPMENT_TEAM: W74274K4FM
+scripts:
+  - name: Install npm dependencies
+    script: |
+      npm ci
+  - name: Install Go toolchain
+    script: |
+      brew install go@1.25
+      echo "export PATH=\"$(brew --prefix go@1.25)/bin:\$PATH\"" >> "$CM_ENV"
+      export PATH="$(brew --prefix go@1.25)/bin:$PATH"
+      go version
+
