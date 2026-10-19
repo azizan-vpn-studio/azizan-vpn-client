@@ -826,8 +826,8 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.outline.ios.client;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = org.outline.macos.client;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpnstudio.azizanvpn;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.azizanvpnstudio.azizanvpn.macos;
 				PRODUCT_NAME = Outline;
 				PROVISIONING_PROFILE = "";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -873,8 +873,8 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 15.5;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.outline.ios.client;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = org.outline.macos.client;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpnstudio.azizanvpn;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=macosx*]" = com.azizanvpnstudio.azizanvpn.macos;
 				PRODUCT_NAME = Outline;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
@@ -938,7 +938,7 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.outline.macos.client.AppKitIntegration;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpnstudio.azizanvpn.macos.AppKitIntegration;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;
@@ -998,7 +998,7 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = org.outline.macos.client.AppKitIntegration;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azizanvpnstudio.azizanvpn.macos.AppKitIntegration;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SDKROOT = macosx;
 				SKIP_INSTALL = YES;

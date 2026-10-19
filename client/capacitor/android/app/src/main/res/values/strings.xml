@@ -16,8 +16,8 @@
 -->
 
 <resources>
-    <string name="app_name">Outline</string>
-    <string name="title_activity_main">Outline</string>
+    <string name="app_name">Azizan VPN</string>
+    <string name="title_activity_main">Azizan VPN</string>
     <string name="package_name">org.outline.client</string>
     <string name="custom_url_scheme">org.outline.client</string>
 </resources>
