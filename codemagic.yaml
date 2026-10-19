@@ -45,8 +45,6 @@ workflows:
           go version
       - name: Prepare and synchronize iOS project
         script: |
-          # This known-working action builds the web bundle and tun2socks,
-          # runs Capacitor sync, and verifies an unsigned Debug build.
           npm run action client/capacitor/build ios
       - name: Configure signing after Capacitor sync
         script: |
@@ -62,7 +60,7 @@ workflows:
             -configuration Release \
             -archivePath "$CM_BUILD_DIR/output/client/ios/Outline.xcarchive" \
             MARKETING_VERSION=1.0 \
-            CURRENT_PROJECT_VERSION=1 \
+            CURRENT_PROJECT_VERSION=2 \
             DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
       - name: Export signed App Store IPA
         script: |
@@ -75,3 +73,9 @@ workflows:
       - output/client/ios/ipa/*.ipa
       - output/client/ios/Outline.xcarchive
       - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth:
+          integration: Azizan VPN
+        submit_to_testflight: true
+        submit_to_app_store: false
