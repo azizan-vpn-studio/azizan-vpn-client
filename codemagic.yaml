@@ -73,8 +73,10 @@ workflows:
       - output/client/ios/ipa/*.ipa
       - output/client/ios/Outline.xcarchive
       - /tmp/xcodebuild_logs/*.log
-    publishing:
-      app_store_connect:
-        auth: integration
-        submit_to_testflight: true
-        submit_to_app_store: false
+   publishing:
+     app_store_connect:
+       auth: integration
+       integrations:
+         app_store_connect: Azizan VPN
+       submit_to_testflight: true
+       submit_to_app_store: false
