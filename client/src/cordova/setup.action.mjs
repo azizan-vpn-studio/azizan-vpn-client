@@ -133,6 +133,25 @@ async function androidRelease(versionName, buildNumber, verbose) {
   ]);
 }
 
+// Cordova generates its application folder using the branded app name, but
+// our custom legacy Xcode project still references the original Outline paths.
+async function syncCordovaAppleProject() {
+  const iosDir = path.resolve(getRootDir(), 'client/platforms/ios');
+  const generatedName = (await fs.readdir(iosDir, {withFileTypes: true})).find(
+    entry =>
+      entry.isDirectory() &&
+      entry.name.replace(/[\s_-]/g, '').toLowerCase() === 'azizanvpn'
+  )?.name;
+
+  if (!generatedName) {
+    throw new Error('Cannot find the generated Azizan VPN iOS folder');
+  }
+
+  await fs.cp(path.join(iosDir, generatedName), path.join(iosDir, 'Outline'), {
+    recursive: true,
+  });
+}
+
 async function appleDebug(verbose) {
   if (os.platform() !== 'darwin') {
     throw new Error(
@@ -146,6 +165,8 @@ async function appleDebug(verbose) {
     verbose,
   });
 
+  await syncCordovaAppleProject();
+
   // TODO(daniellacosse): move this to a cordova hook
   await spawnStream(
     'rsync',
@@ -154,10 +175,6 @@ async function appleDebug(verbose) {
     'platforms/ios/'
   );
 
-  await fs.copyFile(
-    path.resolve(getRootDir(), 'client/config.xml'),
-    path.resolve(getRootDir(), 'client/platforms/ios/Outline/config.xml')
-  );
 }
 async function setAppleVersion(platform, versionName, buildNumber) {
   await makeReplacements([
@@ -186,6 +203,8 @@ async function appleRelease(version, buildNumber, verbose) {
     save: false,
     verbose,
   });
+
+  await syncCordovaAppleProject();
 
   // TODO(daniellacosse): move this to a cordova hook
   await spawnStream(
