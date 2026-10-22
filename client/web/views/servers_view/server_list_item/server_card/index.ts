@@ -214,6 +214,48 @@ export class ServerCard extends LitElement implements ServerListItemElement {
       }
     }
 
+    .azizan-connection-status {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.5rem;
+      color: var(--outline-text-color);
+      font: 600 0.82rem var(--outline-font-family);
+    }
+
+    .azizan-connection-dot {
+      display: inline-block;
+      height: 0.55rem;
+      width: 0.55rem;
+      border-radius: 50%;
+      background: var(--outline-label-color);
+      flex-shrink: 0;
+    }
+
+    .azizan-connection-status[data-state='connected'] .azizan-connection-dot {
+      background: #16844b;
+    }
+
+    .azizan-connection-status[data-state='connecting'] .azizan-connection-dot,
+    .azizan-connection-status[data-state='reconnecting'] .azizan-connection-dot {
+      background: #b98216;
+    }
+
+    .azizan-quota {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+      color: var(--outline-label-color);
+      font: 0.75rem var(--outline-font-family);
+    }
+
+    .azizan-quota-value {
+      color: var(--outline-text-color);
+      font-weight: 600;
+    }
+
     .card-menu {
       --md-menu-container-color: var(--outline-card-background);
     }
@@ -279,6 +321,46 @@ export class ServerCard extends LitElement implements ServerListItemElement {
     return Boolean(this.server.errorMessageId);
   }
 
+  get connectionStatusMessageId(): string {
+    switch (this.server.connectionState) {
+      case ServerConnectionState.CONNECTED:
+        return 'connected-server-state';
+      case ServerConnectionState.CONNECTING:
+        return 'connecting-server-state';
+      case ServerConnectionState.RECONNECTING:
+        return 'reconnecting-server-state';
+      case ServerConnectionState.DISCONNECTING:
+        return 'disconnecting-server-state';
+      default:
+        return 'disconnected-server-state';
+    }
+  }
+
+  // An Outline client access key does not contain live usage information.
+  // Show numbers only when both values have come from a trusted quota service.
+  get quotaText(): string {
+    const remaining = this.server.quotaRemainingBytes;
+    const limit = this.server.quotaLimitBytes;
+    if (
+      typeof remaining !== 'number' ||
+      typeof limit !== 'number' ||
+      !Number.isFinite(remaining) ||
+      !Number.isFinite(limit) ||
+      remaining < 0 ||
+      limit <= 0 ||
+      remaining > limit
+    ) {
+      return this.localize('azizan-quota-unavailable');
+    }
+    return this.localize(
+      'azizan-quota-value',
+      'remaining',
+      (remaining / 1_000_000_000).toFixed(2),
+      'limit',
+      (limit / 1_000_000_000).toFixed(2)
+    );
+  }
+
   render() {
     return html`
       <div
@@ -308,6 +390,19 @@ export class ServerCard extends LitElement implements ServerListItemElement {
             <label class="card-metadata-server-address"
               >${this.server.address}</label
             >
+            <div
+              class="azizan-connection-status"
+              data-state=${this.server.connectionState}
+              role="status"
+              aria-live="polite"
+            >
+              <span class="azizan-connection-dot" aria-hidden="true"></span>
+              <span>${this.localize(this.connectionStatusMessageId)}</span>
+            </div>
+            <div class="azizan-quota">
+              <span>${this.localize('azizan-data-remaining')}</span>
+              <span class="azizan-quota-value">${this.quotaText}</span>
+            </div>
             <div class="card-metadata-connection-type-container">
               ${this.renderConnectionType()}
             </div>
@@ -325,12 +420,17 @@ export class ServerCard extends LitElement implements ServerListItemElement {
           <md-text-button
             class="card-footer-button"
             @click="${this.connectToggle}"
-            ?disabled=${this.hasErrorMessage}
+            ?disabled=${
+              this.hasErrorMessage &&
+              this.server.connectionState !== ServerConnectionState.DISCONNECTED
+            }
           >
             ${this.localize(
               this.isConnectedState
                 ? 'disconnect-button-label'
-                : 'connect-button-label'
+                : this.hasErrorMessage
+                  ? 'azizan-retry-button-label'
+                  : 'connect-button-label'
             )}
           </md-text-button>
         </footer>
