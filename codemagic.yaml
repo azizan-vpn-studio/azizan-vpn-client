@@ -44,6 +44,8 @@ workflows:
     environment:
       xcode: latest
       node: 22
+      groups:
+        - azizan-usage
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.azizanvpn.ios
