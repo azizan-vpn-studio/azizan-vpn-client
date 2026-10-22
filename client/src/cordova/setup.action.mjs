@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+import fs from 'node:fs/promises';
 import os from 'os';
 import path from 'path';
 import url from 'url';
@@ -133,6 +133,25 @@ async function androidRelease(versionName, buildNumber, verbose) {
   ]);
 }
 
+// Cordova generates its application folder using the branded app name, but
+// our custom legacy Xcode project still references the original Outline paths.
+async function syncCordovaAppleProject() {
+  const iosDir = path.resolve(getRootDir(), 'client/platforms/ios');
+  const generatedName = (await fs.readdir(iosDir, {withFileTypes: true})).find(
+    entry =>
+      entry.isDirectory() &&
+      entry.name.replace(/[\s_-]/g, '').toLowerCase() === 'azizanvpn'
+  )?.name;
+
+  if (!generatedName) {
+    throw new Error('Cannot find the generated Azizan VPN iOS folder');
+  }
+
+  await fs.cp(path.join(iosDir, generatedName), path.join(iosDir, 'Outline'), {
+    recursive: true,
+  });
+}
+
 async function appleDebug(verbose) {
   if (os.platform() !== 'darwin') {
     throw new Error(
@@ -146,6 +165,8 @@ async function appleDebug(verbose) {
     verbose,
   });
 
+  await syncCordovaAppleProject();
+
   // TODO(daniellacosse): move this to a cordova hook
   await spawnStream(
     'rsync',
@@ -154,7 +175,6 @@ async function appleDebug(verbose) {
     'platforms/ios/'
   );
 }
-
 async function setAppleVersion(platform, versionName, buildNumber) {
   await makeReplacements([
     {
@@ -182,6 +202,8 @@ async function appleRelease(version, buildNumber, verbose) {
     save: false,
     verbose,
   });
+
+  await syncCordovaAppleProject();
 
   // TODO(daniellacosse): move this to a cordova hook
   await spawnStream(
