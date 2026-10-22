@@ -1,6 +1,7 @@
 """Run on the server as root. Never commit the output token or clients.json."""
 import argparse
 import fcntl
+import grp
 import hashlib
 import json
 import os
@@ -57,6 +58,7 @@ def main():
         fd, path = tempfile.mkstemp(prefix='.clients-', dir=REGISTRY.parent)
         try:
             os.fchmod(fd, 0o640)
+            os.fchown(fd, 0, grp.getgrnam('azizanusage').gr_gid)
             with os.fdopen(fd, 'w') as f:
                 json.dump(registry, f, indent=2)
                 f.flush()

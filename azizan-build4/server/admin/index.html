@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Azizan VPN | Private usage dashboard</title>
+  <link rel="stylesheet" href="/admin/app.css">
+  <script defer src="/admin/app.js"></script>
+</head>
+<body>
+  <main class="layout">
+    <header class="header">
+      <div class="brand"><span class="brand-logo">A</span><div><strong>AZIZAN VPN</strong><small>PRIVATE ADMIN CONSOLE</small></div></div>
+      <span class="private"><span class="private-dot"></span> Private access</span>
+    </header>
+    <section class="intro">
+      <p class="eyebrow">OVERVIEW / ACCESS KEY TRAFFIC</p>
+      <h1>Usage at a glance.</h1>
+      <p>Read-only estimates for all configured Outline access keys. No passwords, connection links, or live-user surveillance.</p>
+    </section>
+    <section id="sign-in" class="login panel" aria-labelledby="login-title">
+      <div><h2 id="login-title">Administrator sign in</h2><p>Enter your separate administrator usage code, generated on your own server. This is not a VPN key.</p></div>
+      <form id="login-form" autocomplete="off"><label for="secret">Administrator code</label><div class="login-row"><input id="secret" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your private administrator code" required minlength="40"><button type="submit" id="login-button">View dashboard</button></div></form>
+      <p class="hint">The code stays in this tab's memory and is never saved in browser storage or put in a URL.</p>
+    </section>
+    <section id="dashboard" hidden>
+      <div class="toolbar"><div><span id="updated">Not loaded</span><p class="hint">Metrics are estimates and may lag. A key may be shared by multiple devices.</p></div><div class="actions"><button class="secondary" id="refresh" type="button">Refresh data</button><button class="secondary" id="logout" type="button">Sign out</button></div></div>
+      <div class="stats"><article class="metric"><p>Configured keys</p><strong id="configured">—</strong><small>From the server's key directory</small></article><article class="metric"><p>Keys with recorded traffic</p><strong id="active-records">—</strong><small>Not concurrent or online users</small></article><article class="metric"><p>Recorded traffic · up to 30d</p><strong id="traffic">—</strong><small>Limited by actual monitoring history</small></article></div>
+      <section class="table-panel panel" aria-labelledby="table-title"><div class="table-top"><div><h2 id="table-title">Per-key usage</h2><p>Allowance and remaining are shown only when a valid reporting period is configured.</p></div><label class="search"><span>Find a key</span><input id="filter" type="search" placeholder="Search name or key ID" autocomplete="off"></label></div><div class="table-scroll"><table><thead><tr><th>Access key</th><th>Recorded · up to 30d</th><th>Outline cap</th><th>This period</th><th>Allowance</th><th>Remaining</th><th>Period ends</th></tr></thead><tbody id="rows"><tr><td colspan="7">Sign in to retrieve data.</td></tr></tbody></table></div></section>
+      <p class="fine">Azizan VPN usage display does not create keys, disconnect users, or enforce caps. A separate usage code permits an individual user to see only their own assigned key in the app.</p>
+    </section>
+    <p id="status" role="status" aria-live="polite"></p>
+    <footer>AZIZAN VPN <span>·</span> Private, read-only usage reporting</footer>
+  </main>
+</body>
+</html>

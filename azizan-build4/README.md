@@ -1,45 +1,59 @@
-# Azizan VPN — Build 4 usage service (staging package)
+# Azizan VPN Build 4 — administrator + personal dashboards
 
-**Status:** code package, not deployed; do not publish Build 4 until tested on the real server and an actual iPhone. This package does not touch the Outline/Shadowbox Docker containers.
+This update adds TWO separate views:
 
-## What it does
+1. **Owner:** `https://YOUR-IP/admin` — private read-only web dashboard showing all configured Outline keys, each available rolling-30-day traffic estimate, an Outline cap when set, and each configured allocation's period usage, allowance, and remaining GB. It uses a separate 43-character administrator code and cannot be accessed with an ordinary user's usage code. Configured keys without traffic appear as *Unavailable*, never as 0. An hourly safe key-directory refresh picks up renamed/new Outline keys. A shared Outline key combines users' traffic; for per-person figures, give each person their own Outline key.
+2. **Each person:** a card inside the Azizan VPN app displaying used GB, allowance, and remaining GB for the one key associated with their **private usage code**. The pilot asks for the code when checking; it is not stored on the phone or in GitHub. After verification, native secure one-time pairing can be developed as a separate enhancement.
 
-* A small Python API reads Outline traffic counters from the already-private `127.0.0.1:9090` Prometheus endpoint.
-* User receives a separate random **usage code** (not the `ss://` VPN access key). The API hashes that code and looks it up in a root-managed registry; it selects **only** the associated `access_key` metric label.
-* Responds with estimated consumed GB, allowance GB and remaining GB within the explicitly configured UTC period. No keys, passwords or other users' usage are returned.
-* Missing monitoring history, missing metrics, expired or not-yet-started periods return unavailable—not misleading zero consumption.
-* **Read-only display**: it does NOT create/delete VPN access keys or enforce/shut off an allowance. Outline Manager data-limit enforcement must be managed separately.
-* Prometheus `increase()` estimates counter growth and can extrapolate near interval boundaries. It is not billing-grade. At present your monitoring history is shorter than 30 days: **do not create a 30-day allocation starting before actual monitoring began**. The `--monitoring-start` field is a deliberate conservative guard, not an automatically verified retention guarantee.
+Traffic is an **estimate**, limited by actual Prometheus monitoring history. The dashboard does not enforce data limits or report how many people are online. A separate server-side usage code is needed for each access key with a valid monitoring/allowance period. An Outline key's existing data cap is not automatically the same as the dashboard's reporting-period allowance.
 
-## Fast local-only install (manual review first)
+## What to do after updating the GitHub feature branch
 
-Download the ZIP to your Windows PC, transfer it to your DigitalOcean VPS via a secure SSH/SCP connection, then extract it outside the public web root. After reviewing `deploy/install-local.sh`, run it as root. The script saves a dated backup, installs the service as an unprivileged Linux account, checks for HTTP 401 without a token, and listens **only** on `127.0.0.1:8765`. It does not open port 443 or modify Outline/Shadowbox. We will help with the transfer once you have the ZIP.
+**Do not run the install script until the source is updated on your server and the new tests pass.** On the DigitalOcean terminal, update the sparse checkout:
 
-## Prepare a test server installation (manual review first)
+```bash
+git -C /root/azizan-build4-source pull --ff-only
+```
 
-1. Back up `/opt/azizan-usage` and its private registry. Do not publish your existing `clients.json`, Outline access keys or Let's Encrypt private key. The working server already has a venv and exploratory files; replace them only after saving a backup and comparing configurations.
-2. Copy `server/app.py`, `server/requirements.txt` and `server/create_client.py` to `/opt/azizan-usage/`. Install Python dependencies into that directory's existing venv: `venv/bin/python -m pip install -r requirements.txt`.
-3. Keep `/opt/azizan-usage/private` owned `root:azizanusage`, mode `750`; its `clients.json` owner `root:azizanusage`, mode `640` and content `{}` initially. The service runs as unprivileged `azizanusage`. Create the account with `useradd --system --no-create-home --shell /usr/sbin/nologin azizanusage` if needed. Never make the registry web-readable.
-4. Check `venv/bin/python -m py_compile app.py create_client.py`. Before starting, test `AZIZAN_REGISTRY=/opt/azizan-usage/private/clients.json venv/bin/python -c 'from app import app; print(app.test_client().get("/usage").status_code)'` and expect `401`.
-5. For internal staging install `deploy/azizan-usage.service` as `/etc/systemd/system/azizan-usage.service`, `systemctl daemon-reload`, `systemctl enable --now azizan-usage`; it binds exclusively to `127.0.0.1:8765`. Verify with `curl -fsS http://127.0.0.1:8765/health`. Confirm no conflicts first with `ss -lntp`.
-6. **Do not enable public HTTPS until** IP certificate is valid, IP/port checked free, renewal verified and reverse-proxy configuration audited. Use `deploy/nginx-site.conf.template` only after replacing placeholders. The existing short-lived Let's Encrypt IP certificate has a roughly six-day validity; automatic renewal needs testing, and Nginx must reload when replaced. Test server availability with a safe non-user endpoint; then enable TLS and verify with `curl --fail https://SERVER_IP/usage` (expected HTTP 401; curl `--fail` will exit 22). Never use `curl -k` or disable TLS checks in the app.
-7. Enable rate limiting as in the Nginx template. Add the renewal deploy hook after reviewing its paths. Do not change existing VPN/SSH/firewall port rules as part of this install.
+Then run the prepared upgrade command (do not screenshot or share its administrator token output):
 
-## Issue one usage code (run as root on server; example dates only)
+```bash
+bash /root/azizan-build4-source/azizan-build4/deploy/upgrade-admin.sh
+```
 
-`venv/bin/python create_client.py --key-id '7' --allowance-gb '10' --period-start '2026-10-23T00:00:00Z' --period-end '2026-10-30T00:00:00Z' --monitoring-start '2026-10-22T00:00:00Z'`
+The script runs all tests *before* replacing the live API, saves dated backups of both the API and Nginx site, preserves already issued personal codes, extracts **only safe names and IDs** from the root-owned Outline configuration, generates an administrator code once, installs the HTML/CSS/JS, restarts **only** the usage API, and tests Nginx before reloading it. It does not touch Shadowbox, its containers, user VPN keys, SSH, or firewall rules. Nginx's `/usage` endpoint stays intact. The admin hash remains root:azizanusage (0640) in `/opt/azizan-usage/private/admin.sha256`.
 
-Replace `7` with the exact Outline metric `access_key` label (not a complete VPN URL); use **verified** time boundaries and actual desired allowance. The printed code is shown once: give it privately to the user. Registry contains only its SHA-256 digest. A separate usage code is needed for each person/key. A shared Outline key aggregates all traffic and cannot reliably attribute per-person usage. For revocation, delete its hash entry from `clients.json` securely; this only revokes usage reporting, **not VPN access**.
+Open `https://165.245.209.64/admin` after a successful upgrade. Type the new administrator code **only into the administrator page**. Keep this code private. User usage codes cannot enter that dashboard. The admin page stores its code only in memory for the open tab and clears it on sign-out/reload.
 
-## Privacy / limitations
+## Personal app build — only after server verification
 
-* Authentication is bearer-token only, so HTTPS is mandatory outside localhost. Do not put tokens in query strings, URLs, repositories, screenshots or analytics. The example HTTPS frontend allows `Authorization` from the app webview and sends no cookies.
-* If you plan to use the same token in a mobile app, store it in native secure storage (iOS Keychain/Android Keystore) and scope it to the chosen server. Do not place tokens in app source code, localStorage or an `ss://` link. The app's frontend still needs separate integration and device testing.
-* Rotate token by removing its hash and creating a new allocation after handling the old registry entry. Treat both the server IP and users' access patterns as security-sensitive.
-* This API reports only traffic matching the `dir=~"c<p|p>t"` counters observed in the present Outline setup; confirm that metric labels still match after Shadowbox upgrades. It intentionally rejects absent or old metrics.
+The patcher is staged at `azizan-build4/client-addon/apply_patch.py`, and supports both the existing modern dashboard and legacy hero card (including the locally saved placeholder). It creates a gitignored endpoint config at build time and displays personal figures after a user enters their separate usage code. **No VPN keys or private usage codes go into the app binary or GitHub.**
 
-## Local automated tests
+When ready, prepare Codemagic via:
 
-`python -m pip install -r server/requirements.txt pytest && python -m pytest -q tests`
+```bash
+python3 azizan-build4/client-addon/enable_codemagic.py
+```
 
-The included tests exercise unauthenticated, bad-token, authorized-per-key, unavailable-metrics, monitoring-failure, and incomplete-window paths without contacting the production server.
+Set `AZIZAN_USAGE_ENDPOINT` to `https://165.245.209.64/usage` under the Codemagic workflow's environment variables. This is an **endpoint, not a credential**. Codemagic will run the patcher before the iOS build and set `CURRENT_PROJECT_VERSION=4`. Confirm the application WebView CSP/iOS ATS permits valid HTTPS IP connections; never use `curl -k` or bypass TLS checks. Run the web build and TestFlight QA before telling users to upgrade. Do not merge or release based solely on a successful build.
+
+The old TestFlight Build 3 is unaffected until a new release is explicitly initiated.
+
+## Operational notes
+
+- Open: `https://165.245.209.64/admin` (admin code required for data).
+- `/usage` remains per-user and returns only that code's assigned access key. A separate code is required for each person.
+- New keys/names are refreshed hourly by `azizan-key-sync.timer` (can also run `sudo /opt/azizan-usage/venv/bin/python /opt/azizan-usage/sync_keys.py`).
+- All code is in the repo; root-owned server registry, admin digest, user codes, live VPN config and certificate private key are **never** committed.
+- Current short-lived certificate renewal was already simulated successfully; keep Certbot renewal and Nginx reload hook enabled.
+- Your previously shared `ss://` test key should be rotated before redistribution. No need to use that connection password for usage reporting.
+
+## Optional: issue individual usage codes for your other configured users in one batch
+
+The administrator panel lists all configured keys **without any personal usage code**. For each person to view their own usage **inside their own app**, issue one separate read-only code per key. After verifying the monitoring-start date and choosing an explicit, active reporting period, the root-only bulk tool can do this in one command:
+
+```bash
+cd /opt/azizan-usage && venv/bin/python issue_all.py --period-start 2026-10-22T00:00:00Z --period-end 2026-10-29T00:00:00Z --monitoring-start 2026-10-22T00:00:00Z --default-allowance-gb 10
+```
+
+**Dates above are only an example**, not a verified future allocation. The bulk tool uses the key's existing Outline cap where available and uses the explicitly specified default only for uncapped keys. It preserves existing registrations such as your test key and prints only the location of a **root-only 0600 file** holding the newly generated personal codes; no code is printed in the terminal or committed to GitHub. Share each code privately with only its assigned user. Allowance figures are display-only, not Outline enforcement. Re-run `sync_keys.py` if new keys have just been created and the hourly refresh has not yet run.

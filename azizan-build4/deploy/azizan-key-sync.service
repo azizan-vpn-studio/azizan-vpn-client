@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh safe Outline key names for Azizan usage dashboard
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/azizan-usage/venv/bin/python /opt/azizan-usage/sync_keys.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/opt/azizan-usage/private

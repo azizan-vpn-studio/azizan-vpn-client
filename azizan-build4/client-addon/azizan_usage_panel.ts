@@ -1,4 +1,4 @@
-/* Azizan VPN pilot usage panel. A usage code is kept only in component memory. */
+/* Personal, per-code usage. A usage code is cleared after each request. */
 import {Localizer} from '@outline/infrastructure/i18n';
 import {css, html, LitElement} from 'lit';
 import {customElement, property, state} from 'lit/decorators.js';
@@ -81,6 +81,7 @@ export class AzizanUsagePanel extends LitElement {
           <span>${this.localize('azizan-usage-limit')}: ${this.result.allowance_gb.toFixed(3)} GB</span>
           <span>${this.localize('azizan-data-remaining')}: ${this.result.remaining_gb.toFixed(3)} GB</span>
           <span class="small">${this.localize('azizan-usage-estimate')}</span>
+          <button type="button" @click=${() => {this.result = undefined;}}>${this.localize('azizan-usage-check-again')}</button>
         ` : html`
           <form @submit=${this.checkUsage}>
             <input type="password" autocomplete="off" spellcheck="false"

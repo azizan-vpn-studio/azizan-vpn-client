@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Azizan VPN access-key directory hourly
+
+[Timer]
+OnCalendar=hourly
+Persistent=true
+RandomizedDelaySec=120
+Unit=azizan-key-sync.service
+
+[Install]
+WantedBy=timers.target

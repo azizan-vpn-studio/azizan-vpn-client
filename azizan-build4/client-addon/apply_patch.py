@@ -3,9 +3,10 @@ import argparse
 import json
 import pathlib
 import shutil
+import re
 from urllib.parse import urlparse
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent.parent  # package is inside azizan-build4
+ROOT = pathlib.Path(__file__).resolve().parent.parent.parent  # azizan-build4/client-addon within repo
 CARD = ROOT / 'client/web/views/servers_view/server_list_item/server_card'
 
 
@@ -26,7 +27,7 @@ def main():
     if parsed.scheme != 'https' or not parsed.hostname or parsed.path != '/usage' or parsed.username or parsed.password or parsed.query or parsed.fragment:
         parser.error('endpoint must be a plain HTTPS /usage URL with no credentials/query/fragment')
     if not CARD.is_dir():
-        parser.error('Copy client-addon into the ROOT of the azizan-vpn-client repo before running')
+        parser.error('Expected azizan-build4/client-addon inside the Azizan repository')
     config = CARD / 'azizan_usage_endpoint.ts'
     config.write_text('export const AZIZAN_USAGE_ENDPOINT = ' + json.dumps(args.endpoint) + ';\n', encoding='utf-8')
     shutil.copyfile(pathlib.Path(__file__).with_name('azizan_usage_panel.ts'), CARD / 'azizan_usage_panel.ts')
@@ -36,27 +37,46 @@ def main():
     start = content.find('            <div class="azizan-quota">')
     end = content.find('            <div class="card-metadata-connection-type-container">', start)
     if start >= 0 and end > start:
-        modern.write_text(content[:start] + '            <azizan-usage-panel .localize=${this.localize}></azizan-usage-panel>\n' + content[end:], encoding='utf-8')
+        modern.write_text(content[:start] + '            ${this.basicAccess ? html`` : html`<azizan-usage-panel .localize=${this.localize}></azizan-usage-panel>`}\n' + content[end:], encoding='utf-8')
     elif '<azizan-usage-panel' not in content:
         raise RuntimeError('modern card quota block not found')
     legacy = CARD / 'legacy.ts'
     change(legacy, "import './server_info_dialog';", "import './server_info_dialog';\nimport './azizan_usage_panel';")
-    # Place the panel *inside* the hero card's button grid area, not as a new grid child.
-    change(legacy, '          </label>\n        </div>\n        ${elements.footer}', '          </label>\n          <azizan-usage-panel .localize=${this.localize}></azizan-usage-panel>\n        </div>\n        ${elements.footer}')
+    # The hero card may have a locally saved placeholder from the Build 3 pilot.
+    # Insert inside the existing button area; remove only that known placeholder.
+    content = legacy.read_text(encoding='utf-8')
+    content = re.sub(
+        r'\s*<div class="azizan-dashboard">\s*\$\{this\.localize\(\'azizan-quota-unavailable\'\)\}\s*</div>',
+        '', content,
+    )
+    if '<azizan-usage-panel' not in content:
+        start = content.find('class="card-connection-button-container"')
+        label_close = content.find('</label>', start)
+        if start < 0 or label_close < 0:
+            raise RuntimeError('hero-card connection label not found')
+        content = (content[:label_close+len('</label>')] +
+                   '\n          <azizan-usage-panel .localize=${this.localize}></azizan-usage-panel>' +
+                   content[label_close+len('</label>'):])
+    # Allow the new usage panel to expand rather than be clipped by hero layout.
+    content = content.replace('        overflow: hidden;\n        height: 100%;\n        gap: var(--outline-slim-gutter);',
+                              '        overflow: visible;\n        height: auto;\n        gap: var(--outline-slim-gutter);')
+    legacy.write_text(content, encoding='utf-8')
     new_messages = {
       'en': {
         'azizan-usage-used': 'Recorded usage', 'azizan-usage-limit': 'Allowance',
         'azizan-usage-estimate': 'Estimate for this period; display only, not enforcement',
         'azizan-usage-code': 'Private usage code', 'azizan-usage-check': 'Check usage',
         'azizan-usage-code-explain': 'Enter the separate usage code given by your access key provider. Not your VPN access key.',
-        'azizan-usage-check-failed': 'Could not verify usage. Check your code and connection.'
+        'azizan-usage-check-failed': 'Could not verify usage. Check your code and connection.',
+        'azizan-usage-check-again': 'Check again'
       },
       'fa': {
         'azizan-usage-used': 'مصرف ثبت‌شده', 'azizan-usage-limit': 'سهمیه',
         'azizan-usage-estimate': 'مقدار تقریبی در این دوره؛ فقط نمایشی و بدون اعمال محدودیت',
         'azizan-usage-code': 'کد خصوصی مصرف', 'azizan-usage-check': 'بررسی مصرف',
         'azizan-usage-code-explain': 'کد جداگانه‌ای را که ارائه‌دهنده به شما داده وارد کنید، نه کلید اتصال VPN.',
-        'azizan-usage-check-failed': 'امکان بررسی مصرف وجود ندارد. کد و اتصال را بررسی کنید.'
+        'azizan-usage-check-failed': 'امکان بررسی مصرف وجود ندارد. کد و اتصال را بررسی کنید.',
+        'azizan-usage-check-again': 'بررسی دوباره'
       },
     }
     for locale, messages in new_messages.items():
