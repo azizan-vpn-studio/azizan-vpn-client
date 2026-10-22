@@ -237,7 +237,8 @@ export class ServerCard extends LitElement implements ServerListItemElement {
     }
 
     .azizan-connection-status[data-state='connecting'] .azizan-connection-dot,
-    .azizan-connection-status[data-state='reconnecting'] .azizan-connection-dot {
+    .azizan-connection-status[data-state='reconnecting']
+      .azizan-connection-dot {
       background: #b98216;
     }
 
@@ -420,10 +421,8 @@ export class ServerCard extends LitElement implements ServerListItemElement {
           <md-text-button
             class="card-footer-button"
             @click="${this.connectToggle}"
-            ?disabled=${
-              this.hasErrorMessage &&
-              this.server.connectionState !== ServerConnectionState.DISCONNECTED
-            }
+            ?disabled=${this.hasErrorMessage &&
+            this.server.connectionState !== ServerConnectionState.DISCONNECTED}
           >
             ${this.localize(
               this.isConnectedState
