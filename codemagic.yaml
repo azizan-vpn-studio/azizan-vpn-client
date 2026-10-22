@@ -61,6 +61,8 @@ workflows:
           go version
       - name: Prepare and synchronize iOS project
         script: |
+          : "${AZIZAN_USAGE_ENDPOINT:?Set the HTTPS usage endpoint in Codemagic first}"
+          python3 azizan-build4/client-addon/apply_patch.py --endpoint "$AZIZAN_USAGE_ENDPOINT"
           npm run action client/capacitor/build ios
       - name: Configure signing after Capacitor sync
         script: |
@@ -76,7 +78,7 @@ workflows:
             -configuration Release \
             -archivePath "$CM_BUILD_DIR/output/client/ios/Outline.xcarchive" \
             MARKETING_VERSION=1.0 \
-            CURRENT_PROJECT_VERSION=3 \
+            CURRENT_PROJECT_VERSION=4 \
             DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
       - name: Export signed App Store IPA
         script: |
