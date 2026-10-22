@@ -1,0 +1,22 @@
+[Unit]
+Description=Azizan VPN read-only usage API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=azizanusage
+Group=azizanusage
+WorkingDirectory=/opt/azizan-usage
+Environment=AZIZAN_REGISTRY=/opt/azizan-usage/private/clients.json
+ExecStart=/opt/azizan-usage/venv/bin/gunicorn --workers 2 --threads 2 --timeout 20 --bind 127.0.0.1:8765 app:app
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/azizan-usage
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

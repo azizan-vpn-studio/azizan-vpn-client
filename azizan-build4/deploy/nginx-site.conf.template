@@ -1,0 +1,26 @@
+# Replace SERVER_IP and CERT_NAME with your actual values before enabling.
+# Listen only on a verified unused port; keep Outline's ports unchanged.
+limit_req_zone $binary_remote_addr zone=azizan_usage:10m rate=12r/m;
+server {
+    listen SERVER_IP:443 ssl;
+    server_name SERVER_IP;
+    ssl_certificate /etc/letsencrypt/live/CERT_NAME/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/CERT_NAME/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=86400" always;
+    client_max_body_size 1k;
+    location = /usage {
+        limit_req zone=azizan_usage burst=8 nodelay;
+        proxy_pass http://127.0.0.1:8765;
+        proxy_set_header Authorization $http_authorization;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_hide_header Server;
+    }
+    location = /health {
+        allow 127.0.0.1;
+        deny all;
+        proxy_pass http://127.0.0.1:8765;
+    }
+    location / { return 404; }
+}
