@@ -19,6 +19,8 @@ install -m 0644 "$PACKAGE_DIR/server/requirements.txt" "$TARGET/requirements.txt
 [[ -x "$TARGET/venv/bin/python" ]] || python3 -m venv "$TARGET/venv"
 "$TARGET/venv/bin/python" -m pip install -r "$TARGET/requirements.txt"
 if [[ ! -f "$TARGET/private/clients.json" ]]; then printf '{}\n' > "$TARGET/private/clients.json"; fi
+chown root:azizanusage "$TARGET"
+chmod 0750 "$TARGET"
 chown root:azizanusage "$TARGET/private" "$TARGET/private/clients.json"
 chmod 0750 "$TARGET/private"
 chmod 0640 "$TARGET/private/clients.json"
