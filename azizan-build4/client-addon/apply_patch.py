@@ -5,7 +5,7 @@ import pathlib
 import shutil
 from urllib.parse import urlparse
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent  # after copying client-addon into repo root
+ROOT = pathlib.Path(__file__).resolve().parent.parent.parent  # package is inside azizan-build4
 CARD = ROOT / 'client/web/views/servers_view/server_list_item/server_card'
 
 
