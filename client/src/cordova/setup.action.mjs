@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+import fs from 'node:fs/promises';
 import os from 'os';
 import path from 'path';
 import url from 'url';
@@ -153,8 +153,12 @@ async function appleDebug(verbose) {
     'src/cordova/apple/xcode/',
     'platforms/ios/'
   );
-}
 
+  await fs.copyFile(
+    path.resolve(getRootDir(), 'client/config.xml'),
+    path.resolve(getRootDir(), 'client/platforms/ios/Outline/config.xml')
+  );
+}
 async function setAppleVersion(platform, versionName, buildNumber) {
   await makeReplacements([
     {
