@@ -430,6 +430,9 @@ export class ServerHeroCard
             ${connectionStatusText}
           </label>
         </div>
+        <div class="azizan-dashboard">
+          ${this.localize('azizan-quota-unavailable')}
+        </div>
         ${elements.footer}
       </div>
       ${elements.menu} ${elements.renameDialog}
