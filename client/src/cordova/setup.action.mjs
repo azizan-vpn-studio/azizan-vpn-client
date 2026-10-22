@@ -174,7 +174,6 @@ async function appleDebug(verbose) {
     'src/cordova/apple/xcode/',
     'platforms/ios/'
   );
-
 }
 async function setAppleVersion(platform, versionName, buildNumber) {
   await makeReplacements([
