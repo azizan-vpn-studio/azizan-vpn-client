@@ -76,7 +76,7 @@ workflows:
             -configuration Release \
             -archivePath "$CM_BUILD_DIR/output/client/ios/Outline.xcarchive" \
             MARKETING_VERSION=1.0 \
-            CURRENT_PROJECT_VERSION=2 \
+            CURRENT_PROJECT_VERSION=3 \
             DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
       - name: Export signed App Store IPA
         script: |
