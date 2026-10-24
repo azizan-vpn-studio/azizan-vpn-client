@@ -32,3 +32,12 @@ Source: User-provided photograph
 License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
+Sarina Esmailzadeh
+
+Filename: sarina-esmailzadeh.jpg
+
+Source: https://www.iranintl.com/en/202307020111
+
+License: Permission for redistribution not yet verified
+
+Display: May be cropped to fit the memorial card.
