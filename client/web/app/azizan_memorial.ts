@@ -86,7 +86,7 @@ const memorialStyles = `
 /** Show on first launch only. Invoke after the mobile UI has initialized. */
 export function showAzizanMemorialOnce(): void {
   try {
-    if (window.localStorage.getItem(MEMORIAL_KEY) === 'true') return;
+
   } catch (e) {
     // Continue without persistence if storage is disabled.
     console.warn('Memorial first-launch preference unavailable', e);
