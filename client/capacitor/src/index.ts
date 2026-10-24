@@ -18,6 +18,7 @@ import {CapacitorPluginOutline} from '@capacitor-plugin-outline';
 import {AbstractClipboard} from '@web/app/clipboard';
 import type {EnvironmentVariables} from '@web/app/environment';
 import {main} from '@web/app/main';
+import {showAzizanMemorialOnce} from '@web/app/azizan_memorial';
 import {
   installDefaultMethodChannel,
   type MethodChannel,
@@ -253,6 +254,7 @@ migrateLegacyCordovaStorageIfNeeded()
     console.error('Storage migration failed: ', e);
   })
   .then(() => main(new CapacitorPlatform()))
+  .then(() => showAzizanMemorialOnce())
   .catch(e => {
     console.error('main() failed: ', e);
   });
