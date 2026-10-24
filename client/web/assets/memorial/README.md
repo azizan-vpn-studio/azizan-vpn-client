@@ -22,3 +22,13 @@ Source: user-provided photo
 License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
+
+Nika Shakarami
+
+Filename: nika-shakarami.jpg
+
+Source: User-provided photograph
+
+License: Permission for redistribution not yet verified
+
+Display: May be cropped to fit the memorial card.
