@@ -67,6 +67,11 @@ android {
     }
 
     buildTypes {
+debug {
+    applicationIdSuffix ".test"
+    versionNameSuffix "-test"
+}
+
         release {
             if (project.hasProperty('outlineKeystorePath')) {
                 signingConfig signingConfigs.release
