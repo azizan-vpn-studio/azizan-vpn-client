@@ -41,3 +41,12 @@ Source: https://www.iranintl.com/en/202307020111
 License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
+Hadis Najafi
+
+Filename: hadis-najafi.jpg
+
+Source: https://rememberiran.com/heroes/hadis-najafi
+
+License: Permission for redistribution not yet verified
+
+Display: May be cropped to fit the memorial card.
