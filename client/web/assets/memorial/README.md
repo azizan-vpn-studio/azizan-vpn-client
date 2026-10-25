@@ -22,7 +22,7 @@ Filename: jina-mahsa-amini.jpg
 
 Source: User-provided photograph
 
-License: Permission for redistribution not yet verified
+LLicense: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
 
