@@ -53,6 +53,17 @@ Display: May be cropped to fit the memorial card.
 Kian Pirfalak
 
 Filename: kian-pirfalak.jpg
+Minoo Majidi
+
+Filename: minoo-majidi.jpg
+
+Reference page: https://taz.de/Proteste-in-Iran/!5885325/
+
+Original photograph source: Not yet verified
+
+License: Permission for redistribution not yet verified
+
+Display: May be cropped to fit the memorial card.
 
 Source page: https://iranjournal.org/news/mord-an-9-jaehrigem-iran
 
