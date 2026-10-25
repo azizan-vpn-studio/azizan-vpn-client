@@ -111,3 +111,12 @@ Source: user-provided photo
 License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
+Mahsa Mougouyi
+
+Filename: mahsa-mougouyi.jpg
+
+Source: user-provided photo
+
+License: Permission for redistribution not yet verified
+
+Display: May be cropped to fit the memorial card
