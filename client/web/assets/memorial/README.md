@@ -108,6 +108,6 @@ Filename: ghazaleh-chelabi.jpg
 
 Source: user-provided photo
 
-icense: Permission for redistribution not yet verified
+License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
