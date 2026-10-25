@@ -93,3 +93,12 @@ Original photograph source: Not yet verified
 License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
+Hannaneh Kia
+
+Filename: hannaneh-kia.jpg
+
+Source: user-provided photo
+
+License: Used for memorial display in Azizan VPN
+
+Display: May be cropped to fit the memorial card
