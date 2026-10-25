@@ -50,3 +50,14 @@ Source: https://rememberiran.com/heroes/hadis-najafi
 License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card.
+Kian Pirfalak
+
+Filename: kian-pirfalak.jpg
+
+Source page: https://iranjournal.org/news/mord-an-9-jaehrigem-iran
+
+Original photograph source: Not yet verified
+
+License: Permission for redistribution not yet verified
+
+Display: May be cropped to fit the memorial card.
