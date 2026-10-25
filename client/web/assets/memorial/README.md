@@ -99,6 +99,6 @@ Filename: hannaneh-kia.jpg
 
 Source: user-provided photo
 
-LLicense: Permission for redistribution not yet verified
+License: Permission for redistribution not yet verified
 
 Display: May be cropped to fit the memorial card
