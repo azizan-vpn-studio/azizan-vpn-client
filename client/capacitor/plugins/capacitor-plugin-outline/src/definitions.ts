@@ -16,6 +16,20 @@
 
 import type {PluginListenerHandle} from '@capacitor/core';
 
+/**
+ * Aggregate packet counts returned by the iOS VPN extension.
+ * Counts are for the current extension session, not lifetime totals.
+ * Not available on other platforms until implemented there.
+ */
+export type AzizanTrafficStats =
+  | {available: false}
+  | {
+      available: true;
+      sessionId: string;
+      downloadBytes: number;
+      uploadBytes: number;
+    };
+
 export interface CapacitorPluginOutline {
   invokeMethod(options: {
     method: string;
@@ -28,6 +42,12 @@ export interface CapacitorPluginOutline {
   }): Promise<void>;
   stop(options: {tunnelId: string}): Promise<void>;
   isRunning(options: {tunnelId: string}): Promise<{isRunning: boolean}>;
+  /**
+   * Read-only counters for the specified tunnel from its VPN extension.
+   * Returns available:false if the session is disconnected or has no counters.
+   * No simulated or estimated byte values are returned by this method.
+   */
+  getTrafficStats(options: {tunnelId: string}): Promise<AzizanTrafficStats>;
   initializeErrorReporting(options: {apiKey: string}): Promise<void>;
   reportEvents(options: {uuid: string}): Promise<void>;
   /**
