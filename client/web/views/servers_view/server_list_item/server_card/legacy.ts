@@ -14,7 +14,7 @@
 import {Corner, type Menu} from '@material/web/menu/menu';
 
 import {Localizer} from '@outline/infrastructure/i18n';
-import {css, html, LitElement} from 'lit';
+import {css, html, LitElement, type PropertyValues} from 'lit';
 import {customElement, property, state} from 'lit/decorators.js';
 import {createRef, Ref, ref} from 'lit/directives/ref.js';
 
@@ -93,8 +93,6 @@ const sharedCSS = css`
     color: var(--outline-text-color);
     font-size: var(--server-name-size);
     margin-bottom: var(--outline-mini-gutter);
-    /* To break the line in case a sequence of word characters is longer than the line.
-       See https://github.com/OutlineFoundation/outline-apps/issues/1372. */
     word-break: break-all;
   }
 
@@ -136,12 +134,11 @@ const sharedCSS = css`
 
   .card-footer-button {
     --md-sys-color-primary: var(--outline-primary);
-
     text-transform: uppercase;
   }
 `;
 
-// TODO(daniellacosse): wrap components in a closure to avoid unnecessary work
+// Original Outline shared card controls are retained.
 const getSharedComponents = (element: ServerListItemElement & LitElement) => {
   const {server, localize, menu, menuButton} = element;
   const isConnectedState = [
@@ -344,6 +341,12 @@ export class ServerHeroCard
   @property({type: Boolean}) darkMode = false;
 
   @state() isRenameDialogOpen = false;
+  @state() private connectionElapsedSeconds = 0;
+
+  // Time observed by this visible card, not an unverified server-side duration.
+  private connectedSince: number | null = null;
+  private observedServerId: string | null = null;
+  private connectionTicker: number | undefined;
 
   menu: Ref<Menu> = createRef();
   menuButton: Ref<HTMLElement> = createRef();
@@ -353,10 +356,6 @@ export class ServerHeroCard
     css`
       .card {
         --min-indicator-size: 192px;
-        /*
-          TODO(daniellacosse): calc() in combination with grid in this way can be inconsistent on iOS.
-          May be resolved by autoprefixer as well.
-        */
         --max-indicator-size: var(--min-indicator-size);
 
         grid-template-columns: 0 1fr auto 0;
@@ -391,8 +390,117 @@ export class ServerHeroCard
         font-family: var(--outline-font-family);
         padding-top: 0.5rem;
       }
+
+      /* Azizan Live Pulse: a real on-screen connection timer. */
+      .azizan-live-pulse-timer {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        max-width: 92%;
+        padding: 7px 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(20, 200, 168, 0.33);
+        background: rgba(20, 200, 168, 0.07);
+        font-family: var(--outline-font-family);
+      }
+
+      .azizan-live-pulse-dot {
+        box-sizing: border-box;
+        display: block;
+        flex: 0 0 8px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #19d6b4;
+        box-shadow: 0 0 7px rgba(25, 214, 180, 0.75);
+        animation: azizan-timer-pulse 1.8s ease-in-out infinite;
+      }
+
+      .azizan-live-pulse-label {
+        color: var(--outline-label-color);
+        font: 0.72rem var(--outline-font-family);
+        white-space: nowrap;
+      }
+
+      .azizan-live-pulse-value {
+        color: var(--outline-primary);
+        font: 700 0.88rem var(--outline-font-family);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      @keyframes azizan-timer-pulse {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 1; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .azizan-live-pulse-dot { animation: none; }
+      }
     `,
   ];
+
+  protected override updated(changedProperties: PropertyValues<this>) {
+    super.updated(changedProperties);
+    this.syncConnectionTimer();
+  }
+
+  override disconnectedCallback() {
+    this.stopConnectionTimer();
+    super.disconnectedCallback();
+  }
+
+  private syncConnectionTimer() {
+    const isConnected =
+      this.isConnected &&
+      this.server?.connectionState === ServerConnectionState.CONNECTED;
+
+    if (!isConnected) {
+      this.stopConnectionTimer();
+      return;
+    }
+
+    // Keep timing for the same server; reset if the user switches servers.
+    if (this.connectedSince !== null && this.observedServerId === this.server.id) {
+      return;
+    }
+
+    this.stopConnectionTimer();
+    this.observedServerId = this.server.id;
+    this.connectedSince = Date.now();
+    this.connectionElapsedSeconds = 0;
+    this.connectionTicker = window.setInterval(() => {
+      if (this.connectedSince === null) return;
+      this.connectionElapsedSeconds = Math.max(
+        0,
+        Math.floor((Date.now() - this.connectedSince) / 1000)
+      );
+    }, 1000);
+  }
+
+  private stopConnectionTimer() {
+    if (this.connectionTicker !== undefined) {
+      window.clearInterval(this.connectionTicker);
+      this.connectionTicker = undefined;
+    }
+    this.connectedSince = null;
+    this.observedServerId = null;
+    if (this.connectionElapsedSeconds !== 0) {
+      this.connectionElapsedSeconds = 0;
+    }
+  }
+
+  private get formattedConnectionDuration(): string {
+    const totalSeconds = this.connectionElapsedSeconds;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds]
+      .map(value => value.toString().padStart(2, '0'))
+      .join(':');
+  }
 
   render() {
     const {elements, dispatchers, messages} = getSharedComponents(this);
@@ -429,6 +537,19 @@ export class ServerHeroCard
           <label class="card-connection-label" for="${messages.connectButton}">
             ${connectionStatusText}
           </label>
+          ${this.server.connectionState === ServerConnectionState.CONNECTED
+            ? html`
+                <div
+                  class="azizan-live-pulse-timer"
+                  role="timer"
+                  aria-label="Time observed connected since this screen appeared"
+                >
+                  <span class="azizan-live-pulse-dot" aria-hidden="true"></span>
+                  <span class="azizan-live-pulse-label">Live Pulse · متصل</span>
+                  <span class="azizan-live-pulse-value">${this.formattedConnectionDuration}</span>
+                </div>
+              `
+            : ''}
         </div>
         ${elements.footer}
       </div>
