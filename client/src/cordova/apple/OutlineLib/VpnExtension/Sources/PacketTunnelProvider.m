@@ -18,6 +18,8 @@
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netdb.h>
+#include <stdint.h>
+#include <stdatomic.h>
 
 @import Tun2socks;
 
@@ -29,7 +31,13 @@ const DDLogLevel ddLogLevel = DDLogLevelInfo;
 
 NSString *const kDefaultPathKey = @"defaultPath";
 
-@interface PacketTunnelProvider ()<Tun2socksTunWriter>
+@interface PacketTunnelProvider ()<Tun2socksTunWriter> {
+  // Lock-free counters of actual packet bytes crossing the VPN tunnel.
+  // These are per-extension-session totals, not internet speed estimates.
+  _Atomic(uint64_t) _azizanUploadBytes;
+  _Atomic(uint64_t) _azizanDownloadBytes;
+}
+@property (nonatomic, copy) NSString *azizanTrafficSessionId;
 @property Tun2socksRemoteDevice *remoteDevice;
 @property (nonatomic, copy) void (^startCompletion)(NSNumber *);
 @property (nonatomic, copy) void (^stopCompletion)(NSNumber *);
@@ -43,6 +51,10 @@ NSString *const kDefaultPathKey = @"defaultPath";
 
 - (id)init {
   self = [super init];
+  if (!self) { return nil; }
+  atomic_init(&_azizanUploadBytes, 0);
+  atomic_init(&_azizanDownloadBytes, 0);
+  _azizanTrafficSessionId = [NSUUID UUID].UUIDString;
   NSString *appGroup = @"group.com.azizanvpnstudio.azizanvpn";
   NSURL *containerUrl = [[NSFileManager defaultManager]
                          containerURLForSecurityApplicationGroupIdentifier:appGroup];
@@ -254,7 +266,12 @@ bool getIpAddressString(const struct sockaddr *sa, char *s, socklen_t maxbytes) 
 }
 
 - (BOOL)write:(NSData *_Nullable)packet n:(long *)n error:(NSError *_Nullable *)error {
-  [self.packetFlow writePackets:@[ packet ] withProtocols:@[ @(AF_INET) ]];
+  // Download: bytes successfully handed from the remote VPN to the iOS TUN.
+  BOOL accepted = [self.packetFlow writePackets:@[ packet ] withProtocols:@[ @(AF_INET) ]];
+  if (accepted) {
+    atomic_fetch_add_explicit(&_azizanDownloadBytes, (uint64_t)packet.length,
+                              memory_order_relaxed);
+  }
   *n = packet.length;
   return YES;
 }
@@ -266,7 +283,14 @@ bool getIpAddressString(const struct sockaddr *sa, char *s, socklen_t maxbytes) 
   [weakSelf.packetFlow readPacketsWithCompletionHandler:^(NSArray<NSData *> *_Nonnull packets,
                                                           NSArray<NSNumber *> *_Nonnull protocols) {
     for (NSData *packet in packets) {
-      [weakSelf.remoteDevice write:packet ret0_:&bytesWritten error:nil];
+      // Upload: count bytes actually accepted for forwarding to the remote VPN.
+      bytesWritten = 0;
+      BOOL accepted = [weakSelf.remoteDevice write:packet ret0_:&bytesWritten error:nil];
+      PacketTunnelProvider *strongSelf = weakSelf;
+      if (accepted && bytesWritten > 0 && strongSelf) {
+        atomic_fetch_add_explicit(&strongSelf->_azizanUploadBytes,
+                                  (uint64_t)bytesWritten, memory_order_relaxed);
+      }
     }
     dispatch_async(weakSelf.packetQueue, ^{
       [weakSelf processPackets];
@@ -328,10 +352,31 @@ bool getIpAddressString(const struct sockaddr *sa, char *s, socklen_t maxbytes) 
 // TODO: Remove this code once we only support newer systems (macOS 13.0+, iOS 16.0+)
 
 NSString *const kFetchLastErrorIPCName = @"fetchLastDisconnectDetailedJsonError";
+NSString *const kAzizanTrafficStatsIPCName = @"azizanTrafficStatsV1";
 
 - (void)handleAppMessage:(NSData *)messageData completionHandler:(void (^)(NSData * _Nullable))completion {
-  // mimics fetchLastDisconnectErrorWithCompletionHandler on older systems
   NSString *ipcName = [[NSString alloc] initWithData:messageData encoding:NSUTF8StringEncoding];
+
+  if ([ipcName isEqualToString:kAzizanTrafficStatsIPCName]) {
+    // Only aggregate byte totals cross the extension/app boundary.
+    NSDictionary *stats = @{
+      @"sessionId": self.azizanTrafficSessionId,
+      @"downloadBytes": @((unsigned long long)atomic_load_explicit(
+          &_azizanDownloadBytes, memory_order_relaxed)),
+      @"uploadBytes": @((unsigned long long)atomic_load_explicit(
+          &_azizanUploadBytes, memory_order_relaxed))
+    };
+    NSError *encodeError = nil;
+    NSData *reply = [NSJSONSerialization dataWithJSONObject:stats
+                                                     options:0
+                                                       error:&encodeError];
+    if (encodeError) {
+      DDLogWarn(@"Azizan traffic counter encoding failed: %@", encodeError);
+    }
+    return completion(reply);
+  }
+
+  // Preserve Outline's original error-retrieval message unchanged.
   if (![ipcName isEqualToString:kFetchLastErrorIPCName]) {
     DDLogWarn(@"Invalid Extension IPC call: %@", ipcName);
     return completion(nil);
