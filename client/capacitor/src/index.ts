@@ -240,6 +240,20 @@ installDefaultMethodChannel(
     : new CapacitorBrowserMethodChannel()
 );
 wireExternalLinkHandling();
+
+// Azizan Live Pulse: expose read-only, real iPhone VPN traffic totals.
+// Android and web remain unavailable until a native implementation exists.
+if (Capacitor.getPlatform() === 'ios') {
+  window.azizanGetTrafficStats = async (tunnelId: string) => {
+    try {
+      return await CapacitorPluginOutline.getTrafficStats({tunnelId});
+    } catch {
+      // A failed statistics request must never interrupt the VPN.
+      return {available: false};
+    }
+  };
+}
+
 let azizanWasInactive = false;
 
 void App.addListener('appStateChange', ({isActive}) => {
