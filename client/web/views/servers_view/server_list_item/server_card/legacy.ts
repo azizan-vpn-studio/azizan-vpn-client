@@ -24,6 +24,24 @@ import './server_info_dialog';
 import {ServerListItem, ServerListItemElement, ServerListItemEvent} from '..';
 import {ServerConnectionState} from '../../server_connection_indicator';
 
+// Azizan Live Pulse receives real counts only from a supported native VPN.
+// The Capacitor iPhone bootstrap installs this optional, read-only bridge.
+// Other platforms remain unavailable rather than showing invented counters.
+type AzizanVpnTrafficStats =
+  | {available: false}
+  | {
+      available: true;
+      sessionId: string;
+      downloadBytes: number;
+      uploadBytes: number;
+    };
+
+declare global {
+  interface Window {
+    azizanGetTrafficStats?: (tunnelId: string) => Promise<AzizanVpnTrafficStats>;
+  }
+}
+
 const sharedCSS = css`
   /* TODO(daniellacosse): reset via postcss */
   h2,
@@ -342,6 +360,22 @@ export class ServerHeroCard
 
   @state() isRenameDialogOpen = false;
   @state() private connectionElapsedSeconds = 0;
+  @state() private trafficDownloadBytes: number | null = null;
+  @state() private trafficUploadBytes: number | null = null;
+  @state() private trafficDownloadMbps: number | null = null;
+  @state() private trafficUploadMbps: number | null = null;
+
+  private trafficPollingTicker: number | undefined;
+  private trafficRequestInFlight = false;
+  private trafficGeneration = 0;
+  private lastTrafficSample:
+    | {
+        sessionId: string;
+        downloadBytes: number;
+        uploadBytes: number;
+        sampledAt: number;
+      }
+    | undefined;
 
   // Time observed by this visible card, not an unverified server-side duration.
   private connectedSince: number | null = null;
@@ -431,6 +465,50 @@ export class ServerHeroCard
         white-space: nowrap;
       }
 
+      /* Real tunnel byte totals and calculated, observed Mbps. */
+      .azizan-traffic-panel {
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: min(330px, 92%);
+        padding: 10px;
+        border: 1px solid rgba(20, 200, 168, 0.28);
+        border-radius: 17px;
+        background: rgba(20, 200, 168, 0.045);
+        font-family: var(--outline-font-family);
+      }
+
+      .azizan-traffic-stat {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 0;
+        gap: 3px;
+        text-align: center;
+      }
+
+      .azizan-traffic-title {
+        color: var(--outline-label-color);
+        font: 0.72rem var(--outline-font-family);
+        white-space: nowrap;
+      }
+
+      .azizan-traffic-bytes {
+        color: var(--outline-primary);
+        font: 700 1.02rem var(--outline-font-family);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
+      .azizan-traffic-rate {
+        color: var(--outline-text-color);
+        font: 0.72rem var(--outline-font-family);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+
       @keyframes azizan-timer-pulse {
         0%, 100% { opacity: 0.55; }
         50% { opacity: 1; }
@@ -454,7 +532,7 @@ export class ServerHeroCard
 
   private syncConnectionTimer() {
     const isConnected =
-  this.server?.connectionState === ServerConnectionState.CONNECTED;
+      this.server?.connectionState === ServerConnectionState.CONNECTED;
 
     if (!isConnected) {
       this.stopConnectionTimer();
@@ -477,9 +555,125 @@ export class ServerHeroCard
         Math.floor((Date.now() - this.connectedSince) / 1000)
       );
     }, 1000);
+    // Only the iPhone native bootstrap provides this real-data bridge.
+    this.startTrafficPolling();
+  }
+
+  private startTrafficPolling() {
+    if (!window.azizanGetTrafficStats) return;
+    this.trafficPollingTicker = window.setInterval(() => {
+      void this.pollTrafficStats();
+    }, 2000);
+    void this.pollTrafficStats();
+  }
+
+  private clearTrafficReadings() {
+    this.lastTrafficSample = undefined;
+    this.trafficDownloadBytes = null;
+    this.trafficUploadBytes = null;
+    this.trafficDownloadMbps = null;
+    this.trafficUploadMbps = null;
+  }
+
+  private stopTrafficPolling() {
+    if (this.trafficPollingTicker !== undefined) {
+      window.clearInterval(this.trafficPollingTicker);
+      this.trafficPollingTicker = undefined;
+    }
+    // Ignore an old asynchronous reply after disconnect or server switch.
+    this.trafficGeneration += 1;
+    this.trafficRequestInFlight = false;
+    this.clearTrafficReadings();
+  }
+
+  private async pollTrafficStats() {
+    const reader = window.azizanGetTrafficStats;
+    const tunnelId = this.observedServerId;
+    if (!reader || !tunnelId || this.trafficRequestInFlight) return;
+
+    const generation = this.trafficGeneration;
+    this.trafficRequestInFlight = true;
+    try {
+      const result = await reader(tunnelId);
+      if (
+        generation !== this.trafficGeneration ||
+        this.observedServerId !== tunnelId ||
+        this.server?.connectionState !== ServerConnectionState.CONNECTED
+      ) return;
+
+      if (
+        !result.available ||
+        !result.sessionId ||
+        !Number.isSafeInteger(result.downloadBytes) ||
+        !Number.isSafeInteger(result.uploadBytes) ||
+        result.downloadBytes < 0 ||
+        result.uploadBytes < 0
+      ) {
+        this.clearTrafficReadings();
+        return;
+      }
+
+      const timestamp = performance.now();
+      const previous = this.lastTrafficSample;
+      if (
+        previous &&
+        previous.sessionId === result.sessionId &&
+        result.downloadBytes >= previous.downloadBytes &&
+        result.uploadBytes >= previous.uploadBytes &&
+        timestamp > previous.sampledAt
+      ) {
+        // A live observed rate, not a simulated speed test.
+        const seconds = (timestamp - previous.sampledAt) / 1000;
+        this.trafficDownloadMbps =
+          ((result.downloadBytes - previous.downloadBytes) * 8) /
+          (seconds * 1_000_000);
+        this.trafficUploadMbps =
+          ((result.uploadBytes - previous.uploadBytes) * 8) /
+          (seconds * 1_000_000);
+      } else {
+        // First reading, a restarted VPN extension, or reset counters.
+        this.trafficDownloadMbps = null;
+        this.trafficUploadMbps = null;
+      }
+
+      this.trafficDownloadBytes = result.downloadBytes;
+      this.trafficUploadBytes = result.uploadBytes;
+      this.lastTrafficSample = {
+        sessionId: result.sessionId,
+        downloadBytes: result.downloadBytes,
+        uploadBytes: result.uploadBytes,
+        sampledAt: timestamp,
+      };
+    } catch {
+      // Never claim a measurement succeeded if the tunnel could not supply it.
+      if (generation === this.trafficGeneration) this.clearTrafficReadings();
+    } finally {
+      if (generation === this.trafficGeneration) {
+        this.trafficRequestInFlight = false;
+      }
+    }
+  }
+
+  private formatTrafficBytes(bytes: number | null): string {
+    if (bytes === null) return '—';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unit = 0;
+    while (value >= 1000 && unit < units.length - 1) {
+      value /= 1000;
+      unit += 1;
+    }
+    const digits = unit === 0 || value >= 100 ? 0 : 1;
+    return `${value.toFixed(digits)} ${units[unit]}`;
+  }
+
+  private formatTrafficMbps(mbps: number | null): string {
+    if (mbps === null || !Number.isFinite(mbps)) return '—';
+    return `${mbps.toFixed(2)} Mbps`;
   }
 
   private stopConnectionTimer() {
+    this.stopTrafficPolling();
     if (this.connectionTicker !== undefined) {
       window.clearInterval(this.connectionTicker);
       this.connectionTicker = undefined;
@@ -546,6 +740,18 @@ export class ServerHeroCard
                   <span class="azizan-live-pulse-dot" aria-hidden="true"></span>
                   <span class="azizan-live-pulse-label">Live Pulse · متصل</span>
                   <span class="azizan-live-pulse-value">${this.formattedConnectionDuration}</span>
+                </div>
+                <div class="azizan-traffic-panel" role="group" aria-label="Measured VPN session traffic">
+                  <div class="azizan-traffic-stat">
+                    <span class="azizan-traffic-title">↓ Download · دریافت</span>
+                    <span class="azizan-traffic-bytes">${this.formatTrafficBytes(this.trafficDownloadBytes)}</span>
+                    <span class="azizan-traffic-rate">${this.formatTrafficMbps(this.trafficDownloadMbps)}</span>
+                  </div>
+                  <div class="azizan-traffic-stat">
+                    <span class="azizan-traffic-title">↑ Upload · ارسال</span>
+                    <span class="azizan-traffic-bytes">${this.formatTrafficBytes(this.trafficUploadBytes)}</span>
+                    <span class="azizan-traffic-rate">${this.formatTrafficMbps(this.trafficUploadMbps)}</span>
+                  </div>
                 </div>
               `
             : ''}
