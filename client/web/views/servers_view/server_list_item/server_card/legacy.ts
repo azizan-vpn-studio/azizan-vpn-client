@@ -454,8 +454,7 @@ export class ServerHeroCard
 
   private syncConnectionTimer() {
     const isConnected =
-      this.isConnected &&
-      this.server?.connectionState === ServerConnectionState.CONNECTED;
+  this.server?.connectionState === ServerConnectionState.CONNECTED;
 
     if (!isConnected) {
       this.stopConnectionTimer();
