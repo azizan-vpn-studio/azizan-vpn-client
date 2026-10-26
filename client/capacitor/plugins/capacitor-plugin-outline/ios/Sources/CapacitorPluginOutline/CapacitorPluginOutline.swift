@@ -83,6 +83,7 @@ public class CapacitorPluginOutline: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isRunning", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getTrafficStats", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "initializeErrorReporting", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "reportEvents", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "quitApplication", returnType: CAPPluginReturnPromise)
@@ -223,6 +224,69 @@ public class CapacitorPluginOutline: CAPPlugin, CAPBridgedPlugin {
             let active = await OutlineVpn.shared.isActive(tunnelId)
             await MainActor.run {
                 call.resolve(["isRunning": active])
+            }
+        }
+    }
+
+    // Azizan Live Pulse: read-only, aggregate VPN byte totals from the packet tunnel.
+    // Never expose packet contents, server credentials, or unverified speeds.
+    // A disconnected tunnel or an unavailable response returns available=false.
+    @objc public func getTrafficStats(_ call: CAPPluginCall) {
+        guard let tunnelId = call.getString(CallKeys.tunnelId), !tunnelId.isEmpty else {
+            return call.reject("Missing tunnel ID")
+        }
+
+        Task {
+            do {
+                let managers = try await NETunnelProviderManager.loadAllFromPreferences()
+                guard let manager = managers.first(where: { manager in
+                    guard let config = manager.protocolConfiguration as? NETunnelProviderProtocol else {
+                        return false
+                    }
+                    return (config.providerConfiguration?["id"] as? String) == tunnelId
+                }),
+                let session = manager.connection as? NETunnelProviderSession,
+                session.status == .connected else {
+                    await MainActor.run { call.resolve(["available": false]) }
+                    return
+                }
+
+                // IPC runs inside Apple's existing VPN extension, not on a server.
+                let request = Data("azizanTrafficStatsV1".utf8)
+                let response: Data? = try await withCheckedThrowingContinuation {
+                    (continuation: CheckedContinuation<Data?, Error>) in
+                    do {
+                        try session.sendProviderMessage(request) { data in
+                            continuation.resume(returning: data)
+                        }
+                    } catch {
+                        continuation.resume(throwing: error)
+                    }
+                }
+
+                guard let response,
+                      let statistics = (try? JSONSerialization.jsonObject(with: response)) as? [String: Any],
+                      let sessionId = statistics["sessionId"] as? String,
+                      !sessionId.isEmpty,
+                      let downloadBytes = statistics["downloadBytes"] as? NSNumber,
+                      let uploadBytes = statistics["uploadBytes"] as? NSNumber,
+                      downloadBytes.doubleValue.isFinite, downloadBytes.doubleValue >= 0,
+                      uploadBytes.doubleValue.isFinite, uploadBytes.doubleValue >= 0 else {
+                    await MainActor.run { call.resolve(["available": false]) }
+                    return
+                }
+
+                await MainActor.run {
+                    call.resolve([
+                        "available": true,
+                        "sessionId": sessionId,
+                        "downloadBytes": downloadBytes,
+                        "uploadBytes": uploadBytes
+                    ])
+                }
+            } catch {
+                // Polling failures should not interrupt an otherwise working VPN.
+                await MainActor.run { call.resolve(["available": false]) }
             }
         }
     }
