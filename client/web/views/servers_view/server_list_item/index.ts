@@ -43,6 +43,9 @@ export interface ServerListItem {
   name: string;
   connectionState: ServerConnectionState;
   connectionType?: ServerConnectionType;
+  // Only populate these from a trusted per-user quota service. Never guess.
+  quotaRemainingBytes?: number;
+  quotaLimitBytes?: number;
 }
 
 /**

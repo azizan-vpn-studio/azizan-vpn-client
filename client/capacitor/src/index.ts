@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import {App} from '@capacitor/app';
 import {Browser} from '@capacitor/browser';
 import {Capacitor} from '@capacitor/core';
 import type {PluginListenerHandle} from '@capacitor/core';
@@ -18,6 +19,7 @@ import {CapacitorPluginOutline} from '@capacitor-plugin-outline';
 import {AbstractClipboard} from '@web/app/clipboard';
 import type {EnvironmentVariables} from '@web/app/environment';
 import {main} from '@web/app/main';
+import {showAzizanMemorialOnce} from '@web/app/azizan_memorial';
 import {
   installDefaultMethodChannel,
   type MethodChannel,
@@ -238,7 +240,22 @@ installDefaultMethodChannel(
     : new CapacitorBrowserMethodChannel()
 );
 wireExternalLinkHandling();
+let azizanWasInactive = false;
 
+void App.addListener('appStateChange', ({isActive}) => {
+  if (!isActive) {
+    azizanWasInactive = true;
+    return;
+  }
+
+  if (azizanWasInactive) {
+    azizanWasInactive = false;
+    showAzizanMemorialOnce();
+  }
+}).catch(error => {
+  console.error('Memorial app-state listener failed:', error);
+});
+ 
 // The migration has to finish first: main() builds the server repository from
 // localStorage, so replaying the Cordova data afterwards would leave the user
 // staring at an empty server list until the next restart.
@@ -249,10 +266,12 @@ wireExternalLinkHandling();
 // entirely on a migration failure — an app that never launches, which is far
 // worse than one that launches missing its servers.
 migrateLegacyCordovaStorageIfNeeded()
+  
   .catch(e => {
     console.error('Storage migration failed: ', e);
   })
   .then(() => main(new CapacitorPlatform()))
+  .then(() => showAzizanMemorialOnce())
   .catch(e => {
     console.error('main() failed: ', e);
   });

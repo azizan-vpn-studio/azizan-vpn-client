@@ -14,8 +14,7 @@
 import {LitElement, html, css} from 'lit';
 import {customElement, property} from 'lit/decorators.js';
 
-import outlineDarkLogo from '../../assets/brand-logo-dark.png';
-import outlineLogo from '../../assets/brand-logo.png';
+import azizanLogo from '../../assets/Icon-83.5@2x.png';
 
 @customElement('about-view')
 export class AboutView extends LitElement {
@@ -92,10 +91,8 @@ export class AboutView extends LitElement {
     return html`
       <article>
         <header>
-          <img
-            src="${this.darkMode ? outlineDarkLogo : outlineLogo}"
-            alt="outline logo"
-          />
+          <img src="${azizanLogo}" alt="Azizan VPN logo" />
+          <h1>Azizan VPN</h1>
           <h2>
             ${this.localize('version', 'appVersion', this.version)}
             (${this.build})

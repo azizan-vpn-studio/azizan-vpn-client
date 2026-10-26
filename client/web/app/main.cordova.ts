@@ -26,6 +26,7 @@ setRootPath(
 import {AbstractClipboard} from './clipboard';
 import {EnvironmentVariables} from './environment';
 import {main} from './main';
+import {showAzizanMemorialOnce} from './azizan_memorial';
 import {installDefaultMethodChannel, MethodChannel} from './method_channel';
 import {VpnApi} from './outline_server_repository/vpn';
 import {CordovaVpnApi} from './outline_server_repository/vpn.cordova';
@@ -157,6 +158,7 @@ document.addEventListener('deviceready', async () => {
   installDefaultMethodChannel(new CordovaMethodChannel());
   try {
     await main(new CordovaPlatform());
+    showAzizanMemorialOnce();
   } catch (e) {
     console.error('main() failed: ', e);
   }

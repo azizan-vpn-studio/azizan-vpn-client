@@ -88,6 +88,45 @@ export async function main(...parameters) {
   // project from the working directory.
   process.chdir(capacitorDir);
   await spawnStream('npx', 'cap', 'sync', platform);
+  // Reuse Azizan's portrait icon assets for the Capacitor launcher.
+  if (platform === 'android') {
+    const iconsDir = path.resolve(capacitorDir, '../resources/icons/android');
+    const resDir = path.resolve(capacitorDir, 'android/app/src/main/res');
+    const densities = ['ldpi', 'mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'];
+    for (const density of densities) {
+      const sourceDensity = density === 'ldpi' ? 'mdpi' : density;
+      const source = path.join(iconsDir, `icon_${sourceDensity}.png`);
+      for (const name of [
+        'ic_launcher.png',
+        'ic_launcher_round.png',
+        'ic_launcher_background.png',
+      ]) {
+        await fs.copyFile(
+          source,
+          path.join(resDir, `mipmap-${density}`, name)
+        );
+      }
+    }
+
+    // Remove the old green overlay and let the portrait fill the icon mask.
+    for (const name of ['ic_launcher.xml', 'ic_launcher_round.xml']) {
+      const iconPath = path.join(resDir, 'mipmap-anydpi-v26', name);
+      const existing = await fs.readFile(iconPath, 'utf8');
+      const start = existing.indexOf('<adaptive-icon');
+      if (start < 0) {
+        throw new Error(`Cannot find adaptive icon in ${iconPath}`);
+      }
+      const adaptiveIcon = [
+        '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">',
+        '    <background android:drawable="@mipmap/ic_launcher_background" />',
+        '    <foreground android:drawable="@android:color/transparent" />',
+        '</adaptive-icon>',
+        '',
+      ].join('\n');
+      await fs.writeFile(iconPath, existing.slice(0, start) + adaptiveIcon);
+    }
+  }
+
 
   switch (platform + buildMode) {
     case 'android' + 'debug':

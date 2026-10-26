@@ -106,7 +106,7 @@ public class CapacitorPluginOutline: CAPPlugin, CAPBridgedPlugin {
         #endif
     }()
 
-    private static let appGroupIdentifier = "group.org.getoutline.client"
+    private static let appGroupIdentifier = "group.com.azizanvpnstudio.azizanvpn"
     private static let maxBreadcrumbs: UInt = 100
 
     private var sentryLogger: OutlineSentryLogger?

@@ -1,6 +1,6 @@
 {
-    "appId": "org.outline.ios.client",
-    "appName": "Outline",
+    "appId": "com.azizanvpn.ios",
+    "appName": "Azizan VPN",
     "webDir": "www",
     "bundledWebRuntime": false,
     "server": {
