@@ -17,7 +17,7 @@
 import {WebPlugin} from '@capacitor/core';
 import type {PluginListenerHandle} from '@capacitor/core';
 
-import type {CapacitorPluginOutline} from './definitions';
+import type {AzizanTrafficStats, CapacitorPluginOutline} from './definitions';
 
 export class CapacitorPluginOutlineWeb
   extends WebPlugin
@@ -44,6 +44,12 @@ export class CapacitorPluginOutlineWeb
 
   async isRunning(_options: {tunnelId: string}): Promise<{isRunning: boolean}> {
     throw this.unimplemented('Not implemented on web.');
+  }
+
+  // VPN packet counters are available only through a supported native tunnel.
+  // Do not fabricate network usage or display simulated connection speeds.
+  async getTrafficStats(_options: {tunnelId: string}): Promise<AzizanTrafficStats> {
+    return {available: false};
   }
 
   async initializeErrorReporting(_options: {apiKey: string}): Promise<void> {
