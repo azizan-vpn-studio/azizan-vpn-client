@@ -1,4 +1,5 @@
 {
+  "calls-page-title": "Voice calls",
   "about-outline": "Azizan VPN is an application for connecting to a VPN server using an access key.<br><br>Azizan VPN is built on the open-source <a href={outlineUrl}>Outline</a> project and uses <a href={shadowsocksUrl}>Shadowsocks</a> technology. The original project's source code is available on <a href={gitHubUrl}>GitHub</a>. Please see the Licenses section for open-source acknowledgments and license information.",
   "about-page-title": "About Azizan VPN",
   "accept": "Accept",

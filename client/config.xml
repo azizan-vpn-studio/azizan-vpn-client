@@ -31,6 +31,11 @@
 
     <!-- Android -->
     <platform name="android">
+        <!-- Voice calling permission; Android requests it when the microphone is used. -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.RECORD_AUDIO" />
+            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+        </config-file>
         <icon density="ldpi" src="resources/icons/android/icon_mdpi.png" />
         <icon density="mdpi" src="resources/icons/android/icon_mdpi.png" />
         <icon density="hdpi" src="resources/icons/android/icon_hdpi.png" />
@@ -72,6 +77,9 @@
 
     <!-- iOS -->
     <platform name="ios">
+        <config-file target="*-Info.plist" parent="NSMicrophoneUsageDescription">
+            <string>Azizan VPN uses the microphone for voice calls with your contacts.</string>
+        </config-file>
         <preference name="deployment-target" value="15.5" />
         <preference name="scheme" value="app" />
         <preference name="hostname" value="localhost" />

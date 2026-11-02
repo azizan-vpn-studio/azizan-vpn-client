@@ -43,6 +43,8 @@ import '@polymer/paper-toast/paper-toast.js';
 // eslint-disable-next-line n/no-missing-import
 import '../views/about_view';
 // eslint-disable-next-line n/no-missing-import
+import '../views/voice_calls_view';
+// eslint-disable-next-line n/no-missing-import
 import '../views/contact_view';
 // eslint-disable-next-line n/no-missing-import
 import '../views/language_view';
@@ -326,6 +328,7 @@ export class AppRoot extends mixinBehaviors(
             should-show-access-key-wiki-link="[[useAltAccessMessage]]"
             on-add-server="promptAddServer"
           ></servers-view>
+          <azizan-voice-calls-view name="calls" id="voiceCallsView"></azizan-voice-calls-view>
           <contact-view
             name="contact"
             id="contactView"
