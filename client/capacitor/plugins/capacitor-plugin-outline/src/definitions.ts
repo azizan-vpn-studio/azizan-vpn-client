@@ -61,6 +61,14 @@ export interface CapacitorPluginOutline {
    */
   getLegacyCordovaLocalStorage(): Promise<Record<string, string>>;
   quitApplication(): Promise<void>;
+
+  /** Returns the device's Ed25519 public key in base64url format. */
+  getDevicePublicKey(): Promise<{publicKey: string}>;
+
+  /** Signs a server-issued, base64url-encoded challenge. */
+  signDeviceChallenge(options: {
+    challenge: string;
+  }): Promise<{signature: string}>;
   addListener(
     eventName: string,
     listenerFunc: (data: {id: string; status: number}) => void

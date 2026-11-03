@@ -86,7 +86,9 @@ public class CapacitorPluginOutline: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getTrafficStats", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "initializeErrorReporting", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "reportEvents", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "quitApplication", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "quitApplication", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getDevicePublicKey", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "signDeviceChallenge", returnType: CAPPluginReturnPromise)
     ]
 
     private enum CallKeys {
@@ -330,6 +332,30 @@ public class CapacitorPluginOutline: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
+    // MARK: - Azizan Device Authentication
+
+    @objc public func getDevicePublicKey(_ call: CAPPluginCall) {
+        do {
+            let publicKey = try AzizanDeviceAuth.publicKey()
+            call.resolve(["publicKey": publicKey])
+        } catch {
+            call.reject("Unable to retrieve device public key", nil, error)
+        }
+    }
+
+    @objc public func signDeviceChallenge(_ call: CAPPluginCall) {
+        guard let challenge = call.getString("challenge") else {
+            call.reject("Missing challenge")
+            return
+        }
+
+        do {
+            let signature = try AzizanDeviceAuth.signChallenge(challenge)
+            call.resolve(["signature": signature])
+        } catch {
+            call.reject("Unable to sign device challenge", nil, error)
+        }
+    }
     // MARK: - Helpers
 
     private func beginObservingVpnStatus() {

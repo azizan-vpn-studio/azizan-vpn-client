@@ -4,6 +4,10 @@
 import {LitElement, html, css} from 'lit';
 import {Room, RoomEvent, Track} from 'livekit-client';
 import {VOICE_API_BASE_URL} from './config';
+import {
+  getOrCreateDevicePublicKey,
+  signDeviceChallenge,
+} from './device_auth';
 
 function normalizeUsername(value) {
   return String(value || '').trim().replace(/^@/, '').toLowerCase();
@@ -94,6 +98,69 @@ class AzizanVoiceCallsView extends LitElement {
     return result;
   }
 
+  // Build 14: invitation-free, device-based voice login.
+  async loginWithDevice() {
+    if (this.busy) return;
+    this.busy = true;
+
+    try {
+      const username = normalizeUsername(this.username);
+      if (!username) throw new Error('Enter a username.');
+
+      const publicKey = await getOrCreateDevicePublicKey();
+
+      // Attempt device login first, preserving existing accounts.
+      let challenge;
+
+      try {
+        const result = await this.api('build14/login/start', 'POST', {
+          username,
+        });
+        challenge = result.challenge;
+      } catch (error) {
+        // Only register when the account does not exist.
+        if (!/Device account not found/.test(errorMessage(error))) {
+          throw error;
+        }
+
+        const start = await this.api('build14/register/start', 'POST', {
+          username,
+          publicKey,
+        });
+
+        const signature = await signDeviceChallenge(start.challenge);
+
+        await this.api('build14/register/finish', 'POST', {
+          username,
+          publicKey,
+          challenge: start.challenge,
+          signature,
+        });
+
+        const loginStart = await this.api('build14/login/start', 'POST', {
+          username,
+        });
+        challenge = loginStart.challenge;
+      }
+
+      const signature = await signDeviceChallenge(challenge);
+
+      const account = await this.api('build14/login/finish', 'POST', {
+        username,
+        challenge,
+        signature,
+      });
+
+      this.account = account;
+      this.notice = 'Signed in securely without an invitation.';
+      await this.refresh();
+
+    } catch (error) {
+      this.notice = errorMessage(error);
+    } finally {
+      this.busy = false;
+    }
+  }
   async login() {
     if (this.busy) return;
     this.busy = true;
@@ -230,7 +297,11 @@ class AzizanVoiceCallsView extends LitElement {
       ${!configured ? html`<p class="warning" role="status">Calls are not available yet. A separate HTTPS voice-calling backend must be configured before phone testing.</p>` : ''}
       ${!this.account ? html`
         <label>Username<input autocomplete="username" placeholder="azizan1" .value=${this.username} @input=${e => this.username = e.target.value}></label>
-        <label>Private invitation secret<input type="password" autocomplete="off" .value=${this.secret} @input=${e => this.secret = e.target.value}></label>
+        <button type="button"
+          ?disabled=${true}
+          @click=${this.loginWithDevice}>
+          Create account / Sign in without invitation
+        </button>        <label>Private invitation secret<input type="password" autocomplete="off" .value=${this.secret} @input=${e => this.secret = e.target.value}></label>
         <button type="button" ?disabled=${this.busy || !configured} @click=${this.login}>Sign in</button>
       ` : html`
         <p class="small">Signed in as @${this.account.username}. Keep the app open to receive a call.</p>

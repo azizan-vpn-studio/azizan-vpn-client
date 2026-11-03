@@ -67,6 +67,16 @@ export class CapacitorPluginOutlineWeb
     return {};
   }
 
+  // Secure authentication requires the native iOS Keychain.
+  async getDevicePublicKey(): Promise<{publicKey: string}> {
+    throw this.unimplemented('Device authentication requires iOS.');
+  }
+
+  async signDeviceChallenge(
+    _options: {challenge: string}
+  ): Promise<{signature: string}> {
+    throw this.unimplemented('Device authentication requires iOS.');
+  }
   async quitApplication(): Promise<void> {
     throw this.unimplemented('Not implemented on web.');
   }

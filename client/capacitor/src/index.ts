@@ -244,6 +244,22 @@ wireExternalLinkHandling();
 // Azizan Live Pulse: expose read-only, real iPhone VPN traffic totals.
 // Android and web remain unavailable until a native implementation exists.
 if (Capacitor.getPlatform() === 'ios') {
+  // Azizan secure device authentication (iOS only).
+  window.azizanGetDevicePublicKey = async () => {
+    const result = await CapacitorPluginOutline.getDevicePublicKey();
+    return result.publicKey;
+  };
+
+  window.azizanSignDeviceChallenge = async (challenge: string) => {
+    if (!/^[A-Za-z0-9_-]{43}$/.test(challenge)) {
+      throw new Error('Invalid authentication challenge');
+    }
+
+    const result = await CapacitorPluginOutline.signDeviceChallenge({
+      challenge,
+    });
+    return result.signature;
+  };
   window.azizanGetTrafficStats = async (tunnelId: string) => {
     try {
       return await CapacitorPluginOutline.getTrafficStats({tunnelId});
