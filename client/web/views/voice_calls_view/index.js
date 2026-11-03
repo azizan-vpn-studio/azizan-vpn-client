@@ -31,6 +31,11 @@ class AzizanVoiceCallsView extends LitElement {
     cameraOn: {state: true},
     cameraBusy: {state: true},
     remoteVideoOn: {state: true},
+    messagesOpen: {state: true},
+    messages: {state: true},
+    messageText: {state: true},
+    messageBusy: {state: true},
+    messageNotice: {state: true},
   };
 
   constructor() {
@@ -51,6 +56,13 @@ class AzizanVoiceCallsView extends LitElement {
     this.cameraBusy = false;
     this.remoteVideoOn = false;
     this.videoPreferred = false;
+    this.messagesOpen = false;
+    this.messages = [];
+    this.messageText = '';
+    this.messageBusy = false;
+    this.messageNotice = '';
+    this.messageRefreshing = false;
+    this.messagePeer = '';
     this.callTone = new CallTone();
     this.onVisibility = () => {
       if (document.hidden) this.callTone.stop();
@@ -98,6 +110,12 @@ class AzizanVoiceCallsView extends LitElement {
     .azizan-camera-video video {display:block;width:100%;max-height:260px;object-fit:contain;background:#000;border-radius:10px;}
     .azizan-camera-video .local-video video {max-height:140px;}
     .azizan-camera-video .local-video, .azizan-camera-video .remote-video {min-height:0;}
+    .azizan-messages-panel {border:1px solid #46827a;border-radius:12px;padding:12px;margin-top:16px;}
+    .azizan-messages-panel .thread {max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+    .azizan-messages-panel .bubble {padding:9px 12px;border-radius:12px;max-width:85%;overflow-wrap:anywhere;white-space:pre-wrap;background:#2b4654;align-self:flex-start;}
+    .azizan-messages-panel .bubble.mine {background:#0e746d;align-self:flex-end;}
+    .azizan-messages-panel textarea {width:100%;box-sizing:border-box;min-height:64px;background:#071c2a;color:#f4ffff;border:1px solid #527479;border-radius:10px;padding:10px;font:inherit;}
+    .azizan-messages-panel .meta {font-size:11px;opacity:.8;display:block;margin-top:4px;}
   `;
 
   async api(path, method='GET', data) {
@@ -358,6 +376,52 @@ class AzizanVoiceCallsView extends LitElement {
     } catch (err) {this.notice = errorMessage(err);}
   }
 
+
+  // Experimental Build 16 chat. Server-side storage is transient and NOT end-to-end encrypted.
+  async toggleMessages() {
+    this.messagesOpen = !this.messagesOpen;
+    this.messages = [];
+    this.messagePeer = '';
+    this.messageNotice = '';
+    if (this.messagesOpen) await this.refreshMessages();
+  }
+
+  async refreshMessages() {
+    const peer = normalizeUsername(this.friend);
+    if (!this.account || !this.messagesOpen || !peer || this.messageRefreshing) return;
+    this.messageRefreshing = true;
+    try {
+      const result = await this.api('messages?with=' + encodeURIComponent(peer));
+      // Ignore an old response if the friend username changed while loading.
+      if (normalizeUsername(this.friend) === peer) {
+        this.messages = Array.isArray(result.messages) ? result.messages : [];
+        this.messagePeer = peer;
+        this.messageNotice = '';
+      }
+    } catch (err) {
+      this.messageNotice = 'Messaging unavailable: ' + errorMessage(err);
+    } finally {
+      this.messageRefreshing = false;
+    }
+  }
+
+  async sendMessage() {
+    const peer = normalizeUsername(this.friend);
+    const text = this.messageText.trim();
+    if (!this.account || this.messageBusy || !peer || !text || text.length > 1000) return;
+    this.messageBusy = true;
+    try {
+      await this.api('messages', 'POST', {to: peer, text});
+      this.messageText = '';
+      this.messageNotice = 'Message sent to server.';
+      await this.refreshMessages();
+    } catch (err) {
+      this.messageNotice = 'Message not sent: ' + errorMessage(err);
+    } finally {
+      this.messageBusy = false;
+    }
+  }
+
   async refresh() {
     if (!this.account || this.polling || !VOICE_API_BASE_URL) return;
     this.polling = true;
@@ -378,7 +442,7 @@ class AzizanVoiceCallsView extends LitElement {
         this.selectedCall = null;
       }
     } catch (err) {this.notice = errorMessage(err);}
-    finally {this.syncCallSound(); this.polling = false;}
+    finally {this.syncCallSound(); this.polling = false; if (this.messagesOpen) void this.refreshMessages();}
   }
 
   render() {
@@ -411,6 +475,22 @@ class AzizanVoiceCallsView extends LitElement {
         <label>Friend's username<input placeholder="username" .value=${this.friend} @input=${e => this.friend = e.target.value}></label>
         <button type="button" ?disabled=${this.busy || !!ongoing} @click=${() => this.callFriend(false)}>Voice call</button>
         <button type="button" ?disabled=${this.busy || !!ongoing} @click=${() => this.callFriend(true)}>Video call</button>
+        <button type="button" @click=${this.toggleMessages}>${this.messagesOpen ? 'Hide messages' : 'Messages / پیام‌ها'}</button>
+        ${this.messagesOpen ? html`<div class="azizan-messages-panel">
+          <strong>Chat with @${normalizeUsername(this.friend) || 'friend'}</strong>
+          <p class="small">Experimental messaging. Messages are not end-to-end encrypted, can be read by the server, and disappear after a server restart. Do not send sensitive information. Both users should keep this screen open.</p>
+          ${!normalizeUsername(this.friend) ? html`<p class="small">Enter your friend's username above to start messaging.</p>` : html`
+            <div class="thread" role="log" aria-label="Message history">
+              ${this.messages.map(m => html`<div class="bubble ${m.from === this.account.username ? 'mine' : ''}">
+                ${m.text}<span class="meta">@${m.from} · ${new Date(m.created).toLocaleTimeString()}</span>
+              </div>`)}
+            </div>
+            <label>Message<textarea maxlength="1000" placeholder="Type a message..." .value=${this.messageText} @input=${e => this.messageText = e.target.value}></textarea></label>
+            <button type="button" ?disabled=${this.messageBusy || !this.messageText.trim()} @click=${this.sendMessage}>Send message</button>
+            <button type="button" ?disabled=${this.messageRefreshing} @click=${this.refreshMessages}>Refresh messages</button>
+          `}
+          <p class="small" role="status">${this.messageNotice}</p>
+        </div>` : ''}
         ${c ? html`<div class="call">
           <strong>@${c.from === this.account.username ? c.to : c.from}</strong>
           <p>${c.status === 'ringing' ? (ringingToMe ? 'Incoming voice call' : 'Ringing…') : this.roomConnected ? 'Connected to voice room' : c.status === 'accepted' ? 'Answered — join audio' : c.status}</p>
