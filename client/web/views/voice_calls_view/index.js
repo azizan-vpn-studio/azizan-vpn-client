@@ -31,6 +31,7 @@ class AzizanVoiceCallsView extends LitElement {
     cameraOn: {state: true},
     cameraBusy: {state: true},
     remoteVideoOn: {state: true},
+    remoteExpanded: {state: true},
     messagesOpen: {state: true},
     messages: {state: true},
     messageText: {state: true},
@@ -55,6 +56,7 @@ class AzizanVoiceCallsView extends LitElement {
     this.cameraOn = false;
     this.cameraBusy = false;
     this.remoteVideoOn = false;
+    this.remoteExpanded = false;
     this.videoPreferred = false;
     this.messagesOpen = false;
     this.messages = [];
@@ -106,9 +108,22 @@ class AzizanVoiceCallsView extends LitElement {
     .status {min-height:20px; margin:12px 0; font-size:14px;}
     .small {font-size:13px; opacity:.8; line-height:1.5;}
     [hidden] {display:none!important;}
-    .azizan-camera-video {display:grid;gap:10px;margin-top:14px;}
-    .azizan-camera-video video {display:block;width:100%;max-height:260px;object-fit:contain;background:#000;border-radius:10px;}
-    .azizan-camera-video .local-video video {max-height:140px;}
+    /* Big remote video, with a small picture-in-picture self-view. */
+    .azizan-camera-video {display:block;position:relative;margin-top:14px;background:#000;border-radius:14px;overflow:hidden;min-height:300px;}
+    .azizan-camera-video .remote-video {width:100%;min-height:300px;background:#000;}
+    .azizan-camera-video .remote-video video {display:block;width:100%;height:68vh;max-height:720px;object-fit:contain;background:#000;}
+    .azizan-camera-video .local-video {position:absolute;top:12px;right:12px;width:28%;max-width:135px;z-index:2;border:2px solid #fff;border-radius:12px;overflow:hidden;background:#151d25;box-shadow:0 4px 18px #0008;}
+    .azizan-camera-video .local-video:empty {display:none;}
+    .azizan-camera-video .local-video video {display:block;width:100%;height:155px;object-fit:cover;background:#000;}
+    .azizan-camera-video .video-controls {position:absolute;bottom:12px;left:12px;right:12px;z-index:3;display:flex;justify-content:flex-start;flex-wrap:wrap;gap:8px;}
+    .azizan-camera-video .video-controls button {min-height:42px;margin:0;padding:9px 12px;background:#0aa99c;color:#032c29;border-radius:10px;}
+    .azizan-camera-video .video-controls button.danger {background:#e68892;color:#280710;}
+    /* CSS fullscreen works inside the iPhone WebView, without relying on Fullscreen API. */
+    .azizan-camera-video.expanded {position:fixed;inset:0;z-index:99999;width:100vw;height:100vh;height:100dvh;margin:0;padding:0;border-radius:0;background:#000;box-sizing:border-box;}
+    .azizan-camera-video.expanded .remote-video {height:100%;}
+    .azizan-camera-video.expanded .remote-video video {width:100%;height:100%;max-height:none;object-fit:cover;}
+    .azizan-camera-video.expanded .local-video {top:calc(14px + env(safe-area-inset-top));right:14px;width:27%;max-width:130px;}
+    .azizan-camera-video.expanded .video-controls {bottom:calc(15px + env(safe-area-inset-bottom));}
     .azizan-camera-video .local-video, .azizan-camera-video .remote-video {min-height:0;}
     .azizan-messages-panel {border:1px solid #46827a;border-radius:12px;padding:12px;margin-top:16px;}
     .azizan-messages-panel .thread {max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin:12px 0;}
@@ -299,6 +314,7 @@ class AzizanVoiceCallsView extends LitElement {
           this.roomConnected = false;
           this.cameraOn = false;
           this.remoteVideoOn = false;
+          this.remoteExpanded = false;
           this.videoPreferred = false;
           this.renderRoot?.querySelectorAll('video[data-azizan-video]').forEach(el => el.remove());
           this.notice = 'Voice connection ended.';
@@ -327,6 +343,7 @@ class AzizanVoiceCallsView extends LitElement {
     this.cameraOn = false;
     this.cameraBusy = false;
     this.remoteVideoOn = false;
+    this.remoteExpanded = false;
     this.videoPreferred = false;
     if (current) await current.disconnect().catch(() => {});
     this.shadowRoot?.querySelectorAll('audio[data-azizan-voice]').forEach(el => el.remove());
@@ -500,9 +517,16 @@ class AzizanVoiceCallsView extends LitElement {
           ${ongoing ? html`<button class="danger" type="button" @click=${this.endCall}>End call</button>` : ''}
         </div>` : ''}
       `}
-      <div class="azizan-camera-video" ?hidden=${!this.roomConnected || (!this.cameraOn && !this.remoteVideoOn)}>
+      <div class="azizan-camera-video ${this.remoteExpanded ? 'expanded' : ''}" ?hidden=${!this.roomConnected || (!this.cameraOn && !this.remoteVideoOn)}>
         <div class="remote-video"></div>
         <div class="local-video"></div>
+        ${this.roomConnected ? html`<div class="video-controls">
+          <button type="button" @click=${() => this.remoteExpanded = !this.remoteExpanded}>${this.remoteExpanded ? 'Normal size' : 'Enlarge friend'}</button>
+          ${this.remoteExpanded ? html`
+            <button type="button" @click=${this.toggleMute}>${this.muted ? 'Unmute' : 'Mute'}</button>
+            <button type="button" class="danger" @click=${this.endCall}>End call</button>
+          ` : ''}
+        </div>` : ''}
       </div>
       <p class="status" role="status" aria-live="polite">${this.notice}</p>
     </section>`;
