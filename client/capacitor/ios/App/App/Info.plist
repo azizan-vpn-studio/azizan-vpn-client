@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSCameraUsageDescription</key>
+    <string>Azizan VPN uses your camera only when you turn on video during a call.</string>
+
     <key>NSMicrophoneUsageDescription</key>
     <string>Azizan VPN uses your microphone for voice calls.</string>
 

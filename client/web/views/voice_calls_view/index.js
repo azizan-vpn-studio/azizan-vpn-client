@@ -4,6 +4,7 @@
 import {LitElement, html, css} from 'lit';
 import {Room, RoomEvent, Track} from 'livekit-client';
 import {VOICE_API_BASE_URL} from './config';
+import {CallTone} from './call_tone';
 import {
   getOrCreateDevicePublicKey,
   signDeviceChallenge,
@@ -27,6 +28,9 @@ class AzizanVoiceCallsView extends LitElement {
     muted: {state: true},
     roomConnected: {state: true},
     busy: {state: true},
+    cameraOn: {state: true},
+    cameraBusy: {state: true},
+    remoteVideoOn: {state: true},
   };
 
   constructor() {
@@ -43,10 +47,20 @@ class AzizanVoiceCallsView extends LitElement {
     this.room = null;
     this.poller = null;
     this.polling = false;
+    this.cameraOn = false;
+    this.cameraBusy = false;
+    this.remoteVideoOn = false;
+    this.videoPreferred = false;
+    this.callTone = new CallTone();
+    this.onVisibility = () => {
+      if (document.hidden) this.callTone.stop();
+      else this.syncCallSound();
+    };
   }
 
   connectedCallback() {
     super.connectedCallback();
+    document.addEventListener('visibilitychange', this.onVisibility);
     if (!this.poller) this.poller = setInterval(() => this.refresh(), 2500);
   }
 
@@ -54,6 +68,8 @@ class AzizanVoiceCallsView extends LitElement {
     super.disconnectedCallback();
     clearInterval(this.poller);
     this.poller = null;
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    this.callTone.close();
     // End media locally when component is removed, independent of VPN state.
     void this.leaveRoom();
   }
@@ -78,6 +94,10 @@ class AzizanVoiceCallsView extends LitElement {
     .status {min-height:20px; margin:12px 0; font-size:14px;}
     .small {font-size:13px; opacity:.8; line-height:1.5;}
     [hidden] {display:none!important;}
+    .azizan-camera-video {display:grid;gap:10px;margin-top:14px;}
+    .azizan-camera-video video {display:block;width:100%;max-height:260px;object-fit:contain;background:#000;border-radius:10px;}
+    .azizan-camera-video .local-video video {max-height:140px;}
+    .azizan-camera-video .local-video, .azizan-camera-video .remote-video {min-height:0;}
   `;
 
   async api(path, method='GET', data) {
@@ -98,9 +118,18 @@ class AzizanVoiceCallsView extends LitElement {
     return result;
   }
 
+  syncCallSound() {
+    const call = this.selectedCall;
+    const mode = this.account && call?.status === 'ringing'
+      ? (call.to === this.account.username ? 'incoming' : 'outgoing')
+      : null;
+    this.callTone.setMode(mode, call?.id);
+  }
+
   // Build 14: invitation-free, device-based voice login.
   async loginWithDevice() {
     if (this.busy) return;
+    void this.callTone.unlock();
     this.busy = true;
 
     try {
@@ -163,6 +192,7 @@ class AzizanVoiceCallsView extends LitElement {
   }
   async login() {
     if (this.busy) return;
+    void this.callTone.unlock();
     this.busy = true;
     try {
       const account = await this.api('login', 'POST', {
@@ -176,24 +206,29 @@ class AzizanVoiceCallsView extends LitElement {
     finally {this.busy = false;}
   }
 
-  async callFriend() {
+  async callFriend(withVideo = false) {
     if (this.busy) return;
+    this.videoPreferred = !!withVideo;
+    void this.callTone.unlock();
     this.busy = true;
     try {
       const {call} = await this.api('calls', 'POST', {to: normalizeUsername(this.friend)});
       this.selectedCall = call;
+      this.syncCallSound();
       this.notice = 'Ringing…';
-    } catch (err) { this.notice = errorMessage(err); }
+    } catch (err) { this.videoPreferred = false; this.notice = errorMessage(err); }
     finally {this.busy = false;}
   }
 
-  async respondToCall(action) {
+  async respondToCall(action, withVideo = false) {
     const call = this.selectedCall;
     if (!call || this.busy) return;
     this.busy = true;
     try {
+      this.videoPreferred = action === 'accept' && !!withVideo;
       const answer = await this.api(`calls/${call.id}/${action}`, 'POST');
       this.selectedCall = answer.call;
+      this.syncCallSound();
       if (action === 'accept') await this.joinRoom();
       else this.notice = 'Call declined.';
     } catch (err) {this.notice = errorMessage(err);}
@@ -204,7 +239,7 @@ class AzizanVoiceCallsView extends LitElement {
     const call = this.selectedCall;
     try { if (call) await this.api(`calls/${call.id}/end`, 'POST'); }
     catch (err) {this.notice = errorMessage(err);}
-    finally {await this.leaveRoom(); this.selectedCall = null; this.notice = 'Call ended.';}
+    finally {await this.leaveRoom(); this.selectedCall = null; this.syncCallSound(); this.notice = 'Call ended.';}
   }
 
   async joinRoom() {
@@ -214,6 +249,21 @@ class AzizanVoiceCallsView extends LitElement {
       const {url, token} = await this.api(`calls/${this.selectedCall.id}/token`, 'POST');
       room = new Room({adaptiveStream: false, dynacast: false});
       room.on(RoomEvent.TrackSubscribed, track => {
+        if (track.kind === Track.Kind.Video) {
+          const video = track.attach();
+          video.autoplay = true;
+          video.playsInline = true;
+          video.dataset.azizanVideo = 'remote';
+          const target = this.renderRoot?.querySelector('.remote-video');
+          if (target) {
+            target.replaceChildren(video);
+            this.remoteVideoOn = true;
+            void video.play().catch(() => {});
+          } else {
+            track.detach().forEach(el => el.remove());
+          }
+          return;
+        }
         if (track.kind !== Track.Kind.Audio) return;
         const el = track.attach();
         el.autoplay = true;
@@ -223,11 +273,16 @@ class AzizanVoiceCallsView extends LitElement {
       });
       room.on(RoomEvent.TrackUnsubscribed, track => {
         track.detach().forEach(el => el.remove());
+        if (track.kind === Track.Kind.Video) this.remoteVideoOn = false;
       });
       room.on(RoomEvent.Disconnected, () => {
         if (this.room === room) {
           this.room = null;
           this.roomConnected = false;
+          this.cameraOn = false;
+          this.remoteVideoOn = false;
+          this.videoPreferred = false;
+          this.renderRoot?.querySelectorAll('video[data-azizan-video]').forEach(el => el.remove());
           this.notice = 'Voice connection ended.';
         }
       });
@@ -237,6 +292,7 @@ class AzizanVoiceCallsView extends LitElement {
       await room.localParticipant.setMicrophoneEnabled(true);
       this.roomConnected = true;
       this.notice = 'Connected to voice room. Microphone on.';
+      if (this.videoPreferred) await this.setCameraOn(true);
     } catch (err) {
       if (room) await room.disconnect().catch(() => {});
       if (this.room === room) this.room = null;
@@ -250,8 +306,48 @@ class AzizanVoiceCallsView extends LitElement {
     this.room = null;
     this.roomConnected = false;
     this.muted = false;
+    this.cameraOn = false;
+    this.cameraBusy = false;
+    this.remoteVideoOn = false;
+    this.videoPreferred = false;
     if (current) await current.disconnect().catch(() => {});
     this.shadowRoot?.querySelectorAll('audio[data-azizan-voice]').forEach(el => el.remove());
+    this.shadowRoot?.querySelectorAll('video[data-azizan-video]').forEach(el => el.remove());
+  }
+
+  // Camera only activates after the user chooses a video option.
+  // A camera failure must never end a working voice call.
+  async setCameraOn(enabled) {
+    if (!this.room || !this.roomConnected || this.cameraBusy) return;
+    this.cameraBusy = true;
+    try {
+      const publication = await this.room.localParticipant.setCameraEnabled(enabled);
+      const target = this.renderRoot?.querySelector('.local-video');
+      if (target) target.replaceChildren();
+      if (enabled) {
+        const track = publication?.videoTrack ||
+          this.room.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack;
+        if (!track) {
+          await this.room.localParticipant.setCameraEnabled(false);
+          throw new Error('Camera could not start. Check camera permission.');
+        }
+        const video = track.attach();
+        video.autoplay = true;
+        video.playsInline = true;
+        video.muted = true;
+        video.dataset.azizanVideo = 'local';
+        target?.appendChild(video);
+        void video.play().catch(() => {});
+      }
+      this.cameraOn = enabled;
+      this.notice = enabled ? 'Camera on. Your video is shared with the other caller.'
+        : 'Camera off. Voice call continues.';
+    } catch (err) {
+      this.cameraOn = false;
+      this.notice = 'Video unavailable: ' + errorMessage(err) + '. Voice call continues.';
+    } finally {
+      this.cameraBusy = false;
+    }
   }
 
   async toggleMute() {
@@ -282,7 +378,7 @@ class AzizanVoiceCallsView extends LitElement {
         this.selectedCall = null;
       }
     } catch (err) {this.notice = errorMessage(err);}
-    finally {this.polling = false;}
+    finally {this.syncCallSound(); this.polling = false;}
   }
 
   render() {
@@ -305,17 +401,29 @@ class AzizanVoiceCallsView extends LitElement {
         <button type="button" ?disabled=${this.busy || !configured} @click=${this.login}>Sign in</button>
       ` : html`
         <p class="small">Signed in as @${this.account.username}. Keep the app open to receive a call.</p>
+        <button type="button" @click=${async () => {
+          const enabled = await this.callTone.unlock();
+          this.notice = enabled
+            ? 'Ringing sound enabled while this page stays open.'
+            : 'Unable to enable ringing sound. Check phone audio settings.';
+          this.syncCallSound();
+        }}>Enable ringing sound</button>
         <label>Friend's username<input placeholder="username" .value=${this.friend} @input=${e => this.friend = e.target.value}></label>
-        <button type="button" ?disabled=${this.busy || !!ongoing} @click=${this.callFriend}>Call friend</button>
+        <button type="button" ?disabled=${this.busy || !!ongoing} @click=${() => this.callFriend(false)}>Voice call</button>
+        <button type="button" ?disabled=${this.busy || !!ongoing} @click=${() => this.callFriend(true)}>Video call</button>
         ${c ? html`<div class="call">
           <strong>@${c.from === this.account.username ? c.to : c.from}</strong>
           <p>${c.status === 'ringing' ? (ringingToMe ? 'Incoming voice call' : 'Ringing…') : this.roomConnected ? 'Connected to voice room' : c.status === 'accepted' ? 'Answered — join audio' : c.status}</p>
-          ${ringingToMe ? html`<button type="button" ?disabled=${this.busy} @click=${() => this.respondToCall('accept')}>Answer</button><button type="button" ?disabled=${this.busy} @click=${() => this.respondToCall('decline')}>Decline</button>` : ''}
+          ${ringingToMe ? html`<button type="button" ?disabled=${this.busy} @click=${() => this.respondToCall('accept', false)}>Answer voice</button><button type="button" ?disabled=${this.busy} @click=${() => this.respondToCall('accept', true)}>Answer with video</button><button type="button" ?disabled=${this.busy} @click=${() => this.respondToCall('decline')}>Decline</button>` : ''}
           ${c.status === 'accepted' && !this.roomConnected ? html`<button type="button" @click=${this.joinRoom}>Join audio</button>` : ''}
-          ${this.roomConnected ? html`<button type="button" @click=${this.toggleMute}>${this.muted ? 'Unmute' : 'Mute'}</button>` : ''}
+          ${this.roomConnected ? html`<button type="button" @click=${this.toggleMute}>${this.muted ? 'Unmute' : 'Mute'}</button><button type="button" ?disabled=${this.cameraBusy} @click=${() => this.setCameraOn(!this.cameraOn)}>${this.cameraOn ? 'Turn camera off' : 'Turn camera on'}</button>` : ''}
           ${ongoing ? html`<button class="danger" type="button" @click=${this.endCall}>End call</button>` : ''}
         </div>` : ''}
       `}
+      <div class="azizan-camera-video" ?hidden=${!this.roomConnected || (!this.cameraOn && !this.remoteVideoOn)}>
+        <div class="remote-video"></div>
+        <div class="local-video"></div>
+      </div>
       <p class="status" role="status" aria-live="polite">${this.notice}</p>
     </section>`;
   }
