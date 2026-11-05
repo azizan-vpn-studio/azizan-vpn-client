@@ -154,6 +154,74 @@ const sharedCSS = css`
     --md-sys-color-primary: var(--outline-primary);
     text-transform: uppercase;
   }
+
+  /* AZIZAN_MY_DATA_STAGE1: display only, never invent a quota. */
+  .azizan-my-data-button {
+    display: block;
+    box-sizing: border-box;
+    width: min(330px, 92%);
+    min-height: 46px;
+    margin: 10px auto;
+    padding: 11px 14px;
+    border-radius: 12px;
+    border: 1px solid #3ee1c3;
+    background: #0a5b58;
+    color: white;
+    font: 700 0.93rem var(--outline-font-family);
+    text-align: center;
+    cursor: pointer;
+  }
+  .azizan-my-data-overlay {
+    position: fixed;
+    z-index: 20000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+    box-sizing: border-box;
+    background: rgba(0, 7, 15, .83);
+    font-family: var(--outline-font-family);
+  }
+  .azizan-my-data-panel {
+    display: block;
+    width: min(400px, 100%);
+    padding: 20px;
+    box-sizing: border-box;
+    border: 1px solid #16776d;
+    border-radius: 18px;
+    background: #092634;
+    color: #f3ffff;
+    font: 1rem var(--outline-font-family);
+  }
+  .azizan-my-data-panel h2 {
+    all: unset;
+    display: block;
+    color: #70ead4;
+    font: 700 1.25rem var(--outline-font-family);
+    margin-bottom: 16px;
+  }
+  .azizan-my-data-panel p {
+    display: block;
+    color: #d9eeee;
+    margin: 8px 0;
+    line-height: 1.45;
+  }
+  .azizan-my-data-panel strong { color: white; }
+  .azizan-my-data-panel button {
+    all: unset;
+    display: block;
+    box-sizing: border-box;
+    margin: 18px 0 0;
+    padding: 12px;
+    width: 100%;
+    border-radius: 9px;
+    color: #05231f;
+    background: #68e2c9;
+    font: 700 1rem var(--outline-font-family);
+    text-align: center;
+    cursor: pointer;
+  }
 `;
 
 // Original Outline shared card controls are retained.
@@ -285,6 +353,55 @@ const getSharedComponents = (element: ServerListItemElement & LitElement) => {
   };
 };
 
+// AZIZAN_MY_DATA_LIVE_V1: only render data obtained from authenticated API.
+function renderAzizanMyDataPanel(
+  server: ServerListItem,
+  close: () => void,
+  refresh: () => void
+) {
+  const status = server.quotaStatus;
+  const limit = server.quotaLimitBytes;
+  const remaining = server.quotaRemainingBytes;
+  const used = server.quotaUsedBytes;
+  const validLimited = status === 'ready' && server.quotaUnlimited !== true &&
+    typeof limit === 'number' && Number.isFinite(limit) && limit > 0 &&
+    typeof remaining === 'number' && Number.isFinite(remaining) &&
+    remaining >= 0 && remaining <= limit &&
+    typeof used === 'number' && Number.isFinite(used) && used >= 0;
+  const validUnlimited = status === 'ready' && server.quotaUnlimited === true &&
+    typeof used === 'number' && Number.isFinite(used) && used >= 0;
+  const gb = (bytes: number) => (bytes / 1_000_000_000).toFixed(2) + ' GB';
+  return html`
+    <div class="azizan-my-data-overlay" role="presentation">
+      <section class="azizan-my-data-panel" role="dialog" aria-modal="true"
+               aria-label="My Data - حجم باقی‌مانده">
+        <h2>My Data · حجم باقی‌مانده</h2>
+        ${status === 'loading' ? html`
+          <p>Checking your remaining data…</p>
+          <p dir="rtl">در حال بررسی حجم باقی‌مانده…</p>
+        ` : validLimited ? html`
+          <p>Total allowance: <strong>${gb(limit!)}</strong></p>
+          <p>Used, rolling 30 days: <strong>${gb(used!)}</strong></p>
+          <p>Remaining: <strong>${gb(remaining!)}</strong></p>
+          <p dir="rtl">حجم باقی‌مانده: <strong>${gb(remaining!)}</strong></p>
+          <p>Usage includes other devices sharing this access key.</p>
+        ` : validUnlimited ? html`
+          <p><strong>No individual data limit</strong></p>
+          <p dir="rtl">بدون محدودیت اختصاصی برای این کلید</p>
+          <p>Used, rolling 30 days: <strong>${gb(used!)}</strong></p>
+          <p>Server capacity and provider transfer limits still apply.</p>
+        ` : html`
+          <p><strong>Balance temporarily unavailable</strong></p>
+          <p dir="rtl">اطلاعات حجم باقی‌مانده در دسترس نیست.</p>
+          <p>Try again when an internet connection is available.</p>
+        `}
+        <button type="button" @click=${refresh}>Refresh · بروزرسانی</button>
+        <button type="button" @click=${close}>Close · بستن</button>
+      </section>
+    </div>
+  `;
+}
+
 /**
  * Display a Server as a part of a larger collection.
  */
@@ -295,6 +412,7 @@ export class ServerRowCard extends LitElement implements ServerListItemElement {
   @property({type: Object}) localize: Localizer;
 
   @state() isRenameDialogOpen = false;
+  @state() private myDataOpen = false;
 
   menu: Ref<Menu> = createRef();
   menuButton: Ref<HTMLElement> = createRef();
@@ -341,6 +459,24 @@ export class ServerRowCard extends LitElement implements ServerListItemElement {
         </div>
         ${elements.menuButton} ${elements.footer}
       </div>
+      <button class="azizan-my-data-button" type="button"
+              @click=${() => {
+                this.myDataOpen = true;
+                this.dispatchEvent(new CustomEvent('MyDataRequested', {
+                  detail: {serverId: this.server.id},
+                  bubbles: true,
+                  composed: true,
+                }));
+              }}>
+        My Data · حجم باقی‌مانده
+      </button>
+      ${this.myDataOpen ? renderAzizanMyDataPanel(this.server,
+        () => (this.myDataOpen = false),
+        () => this.dispatchEvent(new CustomEvent('MyDataRequested', {
+          detail: {serverId: this.server.id},
+          bubbles: true,
+          composed: true,
+        }))) : ''}
       ${elements.menu} ${elements.renameDialog}
     `;
   }
@@ -359,6 +495,7 @@ export class ServerHeroCard
   @property({type: Boolean}) darkMode = false;
 
   @state() isRenameDialogOpen = false;
+  @state() private myDataOpen = false;
   @state() private connectionElapsedSeconds = 0;
   @state() private trafficDownloadBytes: number | null = null;
   @state() private trafficUploadBytes: number | null = null;
@@ -758,6 +895,24 @@ export class ServerHeroCard
         </div>
         ${elements.footer}
       </div>
+      <button class="azizan-my-data-button" type="button"
+              @click=${() => {
+                this.myDataOpen = true;
+                this.dispatchEvent(new CustomEvent('MyDataRequested', {
+                  detail: {serverId: this.server.id},
+                  bubbles: true,
+                  composed: true,
+                }));
+              }}>
+        My Data · حجم باقی‌مانده
+      </button>
+      ${this.myDataOpen ? renderAzizanMyDataPanel(this.server,
+        () => (this.myDataOpen = false),
+        () => this.dispatchEvent(new CustomEvent('MyDataRequested', {
+          detail: {serverId: this.server.id},
+          bubbles: true,
+          composed: true,
+        }))) : ''}
       ${elements.menu} ${elements.renameDialog}
     `;
   }

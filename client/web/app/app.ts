@@ -79,6 +79,43 @@ export function isOutlineAccessKey(url: string): boolean {
   );
 }
 
+// AZIZAN_MY_DATA_LIVE_V1: HMAC proof compatible with the existing per-key backend.
+// Never log, persist, or send the imported ss:// credential to the usage service.
+async function azizanMyDataProof(accessKey: string): Promise<string> {
+  const raw = accessKey.trim();
+  if (!raw.startsWith('ss://')) {
+    throw new Error('My Data currently supports static ss:// keys only');
+  }
+  const authority = raw.substring(5).split(/[/?#]/, 1)[0];
+  const at = authority.lastIndexOf('@');
+  if (at <= 0) throw new Error('Invalid access key');
+  const userInfo = decodeURIComponent(authority.substring(0, at));
+  let config = userInfo;
+  if (!userInfo.includes(':')) {
+    const padded = userInfo.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(padded.padEnd(Math.ceil(padded.length / 4) * 4, '='));
+    const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+    config = new TextDecoder('utf-8', {fatal: true}).decode(bytes);
+  }
+  const separator = config.indexOf(':');
+  if (separator <= 0 || separator === config.length - 1) {
+    throw new Error('Invalid Shadowsocks credentials');
+  }
+  const method = config.substring(0, separator);
+  const password = config.substring(separator + 1);
+  const text = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', text.encode(method + '\0' + password),
+    {name: 'HMAC', hash: 'SHA-256'}, false, ['sign']
+  );
+  const signature = await crypto.subtle.sign(
+    'HMAC', key, text.encode('azizan-vpn/my-data/v1')
+  );
+  return Array.from(new Uint8Array(signature), byte =>
+    byte.toString(16).padStart(2, '0')
+  ).join('');
+}
+
 const DEFAULT_SERVER_CONNECTION_STATUS_CHANGE_TIMEOUT = 600;
 
 export class App {
@@ -169,6 +206,9 @@ export class App {
       this.disconnectServer.bind(this)
     );
     this.rootEl.addEventListener('ForgetPressed', this.forgetServer.bind(this));
+    this.rootEl.addEventListener(
+      'MyDataRequested', this.requestMyData.bind(this)
+    );
     this.rootEl.addEventListener(
       'RenameRequested',
       this.renameServer.bind(this)
@@ -799,6 +839,70 @@ export class App {
     );
 
     return false;
+  }
+
+  private async requestMyData(event: CustomEvent<{serverId: string}>) {
+    const serverId = event.detail?.serverId;
+    if (typeof serverId !== 'string' || !this.serverRepo.getById(serverId)) {
+      return;
+    }
+    this.updateServerListItem(serverId, {
+      quotaStatus: 'loading',
+      quotaUsedBytes: undefined,
+      quotaRemainingBytes: undefined,
+      quotaLimitBytes: undefined,
+      quotaUnlimited: false,
+    });
+    try {
+      const accessKey = this.serverRepo.getAccessKey?.(serverId);
+      if (!accessKey) throw new Error('No access key for selected server');
+      const proof = await azizanMyDataProof(accessKey);
+      const response = await fetch('https://165.245.209.64/my-data/v1/balance', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({proof}),
+      });
+      if (!response.ok) throw new Error('Balance service unavailable');
+      const result: {
+        used_gb?: number;
+        limit_gb?: number | null;
+        remaining_gb?: number | null;
+        has_data_limit?: boolean;
+      } = await response.json();
+      const used = result.used_gb;
+      if (typeof used !== 'number' || !Number.isFinite(used) || used < 0) {
+        throw new Error('Invalid balance response');
+      }
+      if (result.has_data_limit === false) {
+        this.updateServerListItem(serverId, {
+          quotaStatus: 'ready',
+          quotaUnlimited: true,
+          quotaUsedBytes: used * 1_000_000_000,
+          quotaLimitBytes: undefined,
+          quotaRemainingBytes: undefined,
+        });
+        return;
+      }
+      const limit = result.limit_gb;
+      const remaining = result.remaining_gb;
+      if (result.has_data_limit !== true ||
+          typeof limit !== 'number' || typeof remaining !== 'number' ||
+          !Number.isFinite(limit) || !Number.isFinite(remaining) ||
+          limit <= 0 || remaining < 0 || remaining > limit) {
+        throw new Error('Invalid quota response');
+      }
+      this.updateServerListItem(serverId, {
+        quotaStatus: 'ready',
+        quotaUnlimited: false,
+        quotaUsedBytes: used * 1_000_000_000,
+        quotaLimitBytes: limit * 1_000_000_000,
+        quotaRemainingBytes: remaining * 1_000_000_000,
+      });
+    } catch (_error) {
+      // Fail closed. Never print access keys, HMAC proofs, or request headers.
+      this.updateServerListItem(serverId, {quotaStatus: 'unavailable'});
+    }
   }
 
   private syncServersToUI() {

@@ -46,6 +46,10 @@ export interface ServerListItem {
   // Only populate these from a trusted per-user quota service. Never guess.
   quotaRemainingBytes?: number;
   quotaLimitBytes?: number;
+  // AZIZAN_MY_DATA_LIVE_V1: read-only authenticated balance response.
+  quotaUsedBytes?: number;
+  quotaUnlimited?: boolean;
+  quotaStatus?: 'loading' | 'ready' | 'unavailable';
 }
 
 /**
