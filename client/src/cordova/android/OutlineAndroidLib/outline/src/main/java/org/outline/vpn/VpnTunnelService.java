@@ -279,6 +279,11 @@ public class VpnTunnelService extends VpnService {
         this.tunFd = builder.establish();
       } catch (Exception e) {
         LOG.log(Level.SEVERE, "Failed to establish the VPN", e);
+        String detail = e.getClass().getSimpleName() + ": " + e.getMessage();
+        tearDownActiveTunnel();
+        return new PlatformError(
+            Platerrors.SetupSystemVPNFailed,
+            "Android VPN setup failed: " + detail);
       }
 
       if (this.tunFd == null) {
